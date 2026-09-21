@@ -1,4 +1,4 @@
-# Math Blaster: Environments, Polish & Avatar Redesign
+# Mokulua Math: Environments, Polish & Avatar Redesign
 
 ## Overview
 

@@ -6,7 +6,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Math Blaster">
+    <meta name="apple-mobile-web-app-title" content="Mokulua Math">
     <meta name="theme-color" content="#1a0a2e">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,7 +14,9 @@
     <link rel="icon" type="image/png" sizes="32x32" href="icon-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-    <title>Math Blaster</title>
+    <title>Mokulua Math</title>
+    <meta name="description" content="Mokulua Math: a beachside math practice game for kids.">
+    <link rel="canonical" href="https://xy808yx.github.io/mokulua-math/">
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
@@ -149,14 +151,15 @@
             text-shadow: 0 0 15px var(--primary);
         }
 
-        .top-buttons { display: flex; gap: 4px; flex-wrap: nowrap; justify-content: flex-end; }
+        .top-buttons { display: flex; gap: 0; flex-wrap: nowrap; justify-content: flex-end; }
 
         .icon-btn {
-            width: 36px;
-            height: 36px;
+            position: relative;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
-            background: var(--card-bg);
-            border: 2px solid var(--primary);
+            background: transparent;
+            border: 0;
             color: var(--primary);
             font-size: 1rem;
             display: flex;
@@ -167,9 +170,18 @@
             -webkit-tap-highlight-color: transparent;
             transition: transform 0.15s;
         }
+        .icon-btn::before {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            pointer-events: none;
+        }
         .icon-btn:active { transform: scale(0.9); }
         .icon-btn.muted { opacity: 0.5; }
-        .btn-icon { width: 20px; height: 20px; }
+        .btn-icon { position: relative; width: 20px; height: 20px; }
 
         /* Settings */
         .settings-wrapper {
@@ -486,8 +498,11 @@
             font-size: 0.9rem;
             color: rgba(255,255,255,0.5);
             opacity: 0;
-            animation: stepAppear 0.4s ease-out forwards;
-            animation-delay: 2s;
+            visibility: hidden;
+        }
+        .strategy-overlay.dismissible .strategy-tap {
+            opacity: 1;
+            visibility: visible;
         }
         @keyframes stepAppear {
             to { opacity: 1; transform: translateY(0); }
@@ -597,11 +612,15 @@
             font-size: 0.85rem;
             font-weight: bold;
             color: var(--accent);
-            flex-shrink: 0;
+            flex: 1;
+            min-width: 0;
         }
-        .level-num { min-width: 36px; }
+        .level-num { min-width: 36px; flex-shrink: 0; }
         .xp-bar {
             width: 48px;
+            min-width: 12px;
+            max-width: 48px;
+            flex: 1;
             height: 6px;
             background: rgba(255,255,255,0.1);
             border-radius: 3px;
@@ -627,6 +646,7 @@
             transition: transform 0.2s;
             width: 48px;
             height: 48px;
+            flex-shrink: 0;
         }
         .mango-avatar:hover { transform: scale(1.1); }
         .mango-avatar:active { transform: scale(0.95); }
@@ -4899,6 +4919,7 @@
         function randomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
+        // Keep the original save namespace so existing players retain their progress.
         function store(key, val) {
             try { localStorage.setItem('mathblaster_' + key, JSON.stringify(val)); }
             catch(e) { /* localStorage full — game continues */ }
@@ -5540,6 +5561,7 @@
         let score = 0, streak = 0;
         let selectedOperations = ['add', 'subtract', 'multiply', 'divide'];
         let gameActive = true, currentInput = '', isAutoSolved = false;
+        let practiceAnswerLocked = false;
         let soundEnabled = true, audioContext = null;
         let correctCount = 0;
 
@@ -6767,6 +6789,7 @@
         }
 
         function startBossBattle() {
+            practiceAnswerLocked = true;
             bossActive = true;
             bossAnswer = '';
             if (comboTimeout) { clearTimeout(comboTimeout); comboTimeout = null; }
@@ -6832,39 +6855,10 @@
             // Boss problems use same difficulty as normal play (timer is the challenge)
             const ops = [...selectedOperations];
             const currentBossOp = ops[Math.floor(Math.random() * ops.length)];
-
-            // Use blended tier sampling (same as normal play, no tier bump)
-            const bossTier = pickBlendedTier(currentBossOp);
-            const tierConfig = DIFFICULTY_TIERS[bossTier - 1];
-            const maxNum = tierConfig.maxNum;
-
-            let num1, num2, display;
-
-            if (currentBossOp === 'add') {
-                const min = bossTier > 1 ? DIFFICULTY_TIERS[bossTier - 2].maxNum : 1;
-                num1 = Math.floor(Math.random() * (maxNum - min)) + min;
-                num2 = Math.floor(Math.random() * Math.min(maxNum, 100)) + 1;
-                bossCorrectAnswer = num1 + num2;
-                display = `${num1} + ${num2}`;
-            } else if (currentBossOp === 'subtract') {
-                const min = bossTier > 1 ? DIFFICULTY_TIERS[bossTier - 2].maxNum : 1;
-                num1 = Math.floor(Math.random() * (maxNum - min)) + min + Math.min(10, maxNum);
-                num2 = Math.floor(Math.random() * Math.min(num1 - 1, 50)) + 1;
-                bossCorrectAnswer = num1 - num2;
-                display = `${num1} − ${num2}`;
-            } else if (currentBossOp === 'multiply') {
-                const m = Math.min(12, 3 + bossTier * 2);
-                num1 = Math.floor(Math.random() * m) + 1;
-                num2 = Math.floor(Math.random() * m) + 1;
-                bossCorrectAnswer = num1 * num2;
-                display = `${num1} × ${num2}`;
-            } else {
-                const m = Math.min(12, 3 + bossTier * 2);
-                num2 = Math.floor(Math.random() * m) + 1;
-                bossCorrectAnswer = Math.floor(Math.random() * m) + 1;
-                num1 = num2 * bossCorrectAnswer;
-                display = `${num1} ÷ ${num2}`;
-            }
+            const facts = getFactsForOperation([currentBossOp]);
+            const fact = facts[Math.floor(Math.random() * facts.length)];
+            bossCorrectAnswer = fact.answer;
+            const display = `${fact.num1} ${OP_SYMBOLS[fact.op]} ${fact.num2}`;
 
             document.getElementById('bossProblem').textContent = `${display} = ?`;
             bossAnswer = '';
@@ -7071,13 +7065,9 @@
             $score.textContent = score;
         }
 
-        let _saveCoinsTimer = null;
         function saveCoins() {
-            if (_saveCoinsTimer) return;
-            _saveCoinsTimer = setTimeout(() => {
-                _saveCoinsTimer = null;
-                store('coins', score);
-            }, 3000);
+            // Persist the balance before an operation change or app reload can read it.
+            store('coins', score);
         }
 
         function updateAnswerDisplay() {
@@ -7092,7 +7082,7 @@
                 bossAnswer += num;
                 $bossAnswer.textContent = bossAnswer + '|';
             } else {
-                if (!gameActive || bossActive || currentInput.length >= 5) return;
+                if (!gameActive || bossActive || practiceAnswerLocked || showingStrategy || currentInput.length >= 5) return;
                 if (num == 0 && currentInput === '') return;
                 currentInput += num;
                 updateAnswerDisplay();
@@ -7106,7 +7096,7 @@
                 bossAnswer = bossAnswer.slice(0, -1);
                 $bossAnswer.textContent = bossAnswer + '|';
             } else {
-                if (!gameActive || bossActive) return;
+                if (!gameActive || bossActive || practiceAnswerLocked || showingStrategy) return;
                 currentInput = currentInput.slice(0, -1);
                 updateAnswerDisplay();
             }
@@ -7342,6 +7332,8 @@
         // SINGAPORE MATH STRATEGY HINTS
         // ==========================================
         let strategyTimeout = null;
+        let strategyPromptTimeout = null;
+        const STRATEGY_MIN_VIEW_MS = 5000;
         let showingStrategy = false;
         let lastStrategyTime = 0; // Cooldown tracking
         let problemsSinceStrategy = 0; // Count problems since last hint
@@ -7534,7 +7526,14 @@
             ).join('');
             document.getElementById('strategyAnswer').textContent = `= ${answer}`;
 
-            document.getElementById('strategyOverlay').classList.add('show');
+            const overlay = document.getElementById('strategyOverlay');
+            overlay.classList.remove('dismissible');
+            overlay.classList.add('show');
+            if (strategyPromptTimeout) clearTimeout(strategyPromptTimeout);
+            strategyPromptTimeout = setTimeout(() => {
+                strategyPromptTimeout = null;
+                if (showingStrategy) overlay.classList.add('dismissible');
+            }, STRATEGY_MIN_VIEW_MS);
 
             // Auto-dismiss after 15 seconds so kids don't get stuck
             if (strategyTimeout) clearTimeout(strategyTimeout);
@@ -7546,14 +7545,18 @@
             if (!showingStrategy) return;
 
             // Don't allow tap dismiss for first 5 seconds (unless forced by timeout)
-            if (!force && (Date.now() - lastStrategyTime) < 5000) return;
+            if (!force && (Date.now() - lastStrategyTime) < STRATEGY_MIN_VIEW_MS) return;
 
             showingStrategy = false;
             if (strategyTimeout) {
                 clearTimeout(strategyTimeout);
                 strategyTimeout = null;
             }
-            document.getElementById('strategyOverlay').classList.remove('show');
+            if (strategyPromptTimeout) {
+                clearTimeout(strategyPromptTimeout);
+                strategyPromptTimeout = null;
+            }
+            document.getElementById('strategyOverlay').classList.remove('show', 'dismissible');
 
             // Continue to next problem (only if game is still active)
             if (gameActive) {
@@ -7863,10 +7866,11 @@
             $feedback.textContent = '';
             $feedback.className = 'feedback';
             $answerDisplay.classList.remove('flash-correct','flash-wrong');
+            practiceAnswerLocked = false;
         }
 
         function checkAnswer() {
-            if (!gameActive || bossActive || currentInput === '') return;
+            if (!gameActive || bossActive || practiceAnswerLocked || showingStrategy || currentInput === '') return;
 
             const userAnswer = parseInt(currentInput, 10);
             const feedbackEl = $feedback;
@@ -7879,6 +7883,8 @@
                 return;
             }
 
+            // Feedback belongs to this question; only the next question accepts input.
+            practiceAnswerLocked = true;
             if (userAnswer === correctAnswer) {
                 if (currentFact) trackOpAccuracy(currentFact.op, true);
                 updatePlayerSkillLevel(true); // Update auto-helper skill tracking
@@ -8806,7 +8812,6 @@
             if (document.hidden) {
                 _flushFactState();
                 _flushCumulativeStats();
-                if (_saveCoinsTimer) { clearTimeout(_saveCoinsTimer); _saveCoinsTimer = null; store('coins', score); }
                 saveStickers(); // Flush mystery box progress
             }
         });

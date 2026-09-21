@@ -1,4 +1,4 @@
-# Math Blaster: Icon & Economy Revamp Spec
+# Mokulua Math: Icon & Economy Revamp Spec
 
 ## Problem Statement
 
