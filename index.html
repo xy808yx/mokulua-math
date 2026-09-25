@@ -10625,8 +10625,7 @@ button, input, select, textarea { font-family: inherit; }
 
           // ---------- returning player tag ----------
           function refreshTag() {
-            const btn = document.getElementById('welcomePlay');
-            const first = !btn || btn.textContent.trim() === 'Play';
+            const first = ws.dataset.firstVisit === 'true';
             let level = 1, coins = 0;
             try { level = playerLevel; } catch (e) { /* not ready */ }
             try { coins = score; } catch (e) { /* not ready */ }
@@ -10647,7 +10646,7 @@ button, input, select, textarea { font-family: inherit; }
             document.body.classList.add('welcome-open');
             document.getElementById('welcomeScreen').hidden = false;
             document.querySelector('.game-container').inert = true;
-            document.getElementById('welcomePlay').textContent = firstVisit ? 'Play' : 'Keep playing';
+            document.getElementById('welcomeScreen').dataset.firstVisit = String(firstVisit);
             window.dispatchEvent(new Event('welcomechange'));
             document.getElementById('welcomePlay').focus({ preventScroll: true });
         }
@@ -11754,9 +11753,9 @@ button, input, select, textarea { font-family: inherit; }
                 if (b.id === 'mixed') b.classList.toggle('active', isMixed);
             });
         }
-        // Every new session starts on the welcome sign: 'Play' the very first
-        // time, 'Keep playing' (with the level tag) after that. The first problem
-        // is made when the child taps it.
+        // Every new session starts on the welcome sign and its Play button.
+        // Returning players also get the level tag. The first problem is made
+        // when the child taps Play.
         buildWelcomeSign();
         showWelcomeScreen(firstVisit);
 
