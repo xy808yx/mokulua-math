@@ -10,6 +10,10 @@ A beachside math practice game with pixel characters, adaptive questions, and co
 
 Run `python3 -m http.server 8765 --bind 127.0.0.1` from this directory, then open http://127.0.0.1:8765/.
 
+## Icons
+
+The app icon is pixel art stored as a 32 by 32 map in `make-icons.py`. Run `python3 make-icons.py` to rebuild every icon file, for this game and for `legacy-site`.
+
 ## Original links and saves
 
 The `legacy-site` directory contains the compatibility site for the original `math-blaster` GitHub Pages address. Browser visits forward to Mokulua Math. Older standalone Home Screen launches display the current game in a full-screen frame to preserve their original navigation scope.
