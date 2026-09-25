@@ -135,6 +135,7 @@ function playedSave(overrides = {}) {
     mathblaster_scene: '"sunset"',
     mathblaster_sound: 'false',
     mathblaster_welcome_seen: 'true',
+    mathblaster_scenery_unlocked: 'true',
     ...overrides,
   };
 }
@@ -361,6 +362,40 @@ test('import keeps an Undo copy, and Undo swaps so nothing is ever thrown away',
   assert.deepEqual(afterRedo, moved);
   assert.equal(T.readBackup(target).reason, 'import');
   assert.equal(T.readBackup(target).keys.mathblaster_avatar, '"lion"');
+});
+
+test('a parent reset keeps an Undo copy, and Undo and Redo swap the same way', () => {
+  const played = playedSave();
+  const target = makeStorage({ ...played, other_app: 'x' });
+  const kept = { mathblaster_version: played.mathblaster_version, mathblaster_xp: '0', mathblaster_pets: played.mathblaster_pets };
+  assert.equal(T.applyReset(target, kept, { now: NOW }).ok, true);
+  const afterReset = Object.fromEntries([...target.map].filter(([k]) => k !== TRANSFER_BACKUP_KEY));
+  assert.deepEqual(afterReset, { ...kept, other_app: 'x' }, 'only the kept keys remain, other apps are untouched');
+  assert.equal(T.readBackup(target).reason, 'reset');
+  for (const key of TRANSFER_KEYS) assert.equal(T.readBackup(target).keys[key] ?? null, played[key] ?? null, key);
+
+  assert.equal(T.undoLastImport(target, { now: NOW + 1000 }).ok, true);
+  const undone = Object.fromEntries([...target.map].filter(([k]) => k !== TRANSFER_BACKUP_KEY));
+  assert.deepEqual(undone, { ...played, other_app: 'x' });
+  assert.equal(T.readBackup(target).reason, 'unreset');
+
+  assert.equal(T.undoLastImport(target, { now: NOW + 2000 }).ok, true);
+  assert.equal(T.readBackup(target).reason, 'reset');
+  assert.equal(target.getItem('mathblaster_xp'), '0');
+});
+
+test('erasing everything removes every moved key and nothing else', () => {
+  const target = makeStorage({ ...playedSave(), other_app: 'x' });
+  assert.equal(T.applyReset(target, {}, { now: NOW }).ok, true);
+  for (const key of TRANSFER_KEYS) assert.equal(target.getItem(key), null, key);
+  assert.equal(target.getItem('other_app'), 'x');
+  assert.equal(T.readBackup(target).reason, 'reset');
+});
+
+test('a reset refuses values that are not stored strings', () => {
+  const target = makeStorage(playedSave());
+  assert.equal(T.applyReset(target, { mathblaster_xp: 0 }).error, 'damaged');
+  assert.equal(T.readBackup(target), null);
 });
 
 test('an Undo copy without a reason is read as undoing an import', () => {
@@ -617,7 +652,7 @@ test('every moved key refuses a readable value of the wrong shape', () => {
     mathblaster_stats: '5', mathblaster_facts_sm2: '5', mathblaster_tiers: '5',
     mathblaster_tier_tracking: '5', mathblaster_op_accuracy: '5', mathblaster_last_session_ts: '"1"',
     mathblaster_selected_ops: '5', mathblaster_theme: '5', mathblaster_scene: '5',
-    mathblaster_sound: '5', mathblaster_welcome_seen: '5',
+    mathblaster_sound: '5', mathblaster_welcome_seen: '5', mathblaster_scenery_unlocked: '5',
   };
   assert.deepEqual(Object.keys(wrong).sort(), [...TRANSFER_KEYS].sort());
   for (const [key, bad] of Object.entries(wrong)) {
