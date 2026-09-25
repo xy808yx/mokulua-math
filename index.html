@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Mokulua Math">
-    <meta name="theme-color" content="#1a0a2e">
+    <meta name="theme-color" content="#87ceeb">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="shortcut icon" href="icon-192.png">
@@ -25,7 +25,7 @@
             --success: #6bcb77;
             --error: #ff6b6b;
             --card-bg: rgba(0, 0, 0, 0.4);
-            --container-bg: rgba(10, 10, 30, 0.7);
+            --container-bg: rgba(25, 47, 66, .93);
             --text-color: #ffffff;
         }
         .theme-rain { --bg-gradient: linear-gradient(135deg, #1a2a3a, #2a3a4a, #3a4a5a); --primary: #7fdbff; --accent: #aaddff; --container-bg: rgba(26, 42, 58, 0.8); }
@@ -416,6 +416,9 @@
         .achievement-toast.show {
             animation: toastSlide var(--toast-dur, 2500ms) ease-out forwards;
         }
+        /* Resting, it only sits 100px above its top. Under a menu whose header
+           is mid-screen that is still on screen, so hide it outright. */
+        .achievement-toast:not(.show) { visibility: hidden; }
         @keyframes toastSlide {
             8% { transform: translateX(-50%) translateY(0); }
             85% { transform: translateX(-50%) translateY(0); }
@@ -491,18 +494,6 @@
             margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 2px;
-        }
-        .strategy-tap {
-            position: absolute;
-            bottom: 40px;
-            font-size: 0.9rem;
-            color: rgba(255,255,255,0.5);
-            opacity: 0;
-            visibility: hidden;
-        }
-        .strategy-overlay.dismissible .strategy-tap {
-            opacity: 1;
-            visibility: visible;
         }
         @keyframes stepAppear {
             to { opacity: 1; transform: translateY(0); }
@@ -1572,6 +1563,383 @@
         .leg.l-bronze::before   { background: linear-gradient(135deg, #8a5a2e, #6b3f1c); }
         .leg.l-silver::before   { background: linear-gradient(135deg, #b8c0c8, #6f7a85); }
         .leg.l-gold::before     { background: linear-gradient(135deg, #ffd93d, #d99a1a); }
+
+        /* Beach framing and play hierarchy */
+        :root { --scene-space: clamp(100px, 19svh, 164px); }
+        body { padding-top: max(12px, env(safe-area-inset-top)); }
+        .game-brand {
+            position: fixed; z-index: 2; top: max(14px, env(safe-area-inset-top));
+            left: 50%; transform: translateX(-50%); padding: 9px 16px;
+            border: 0; background: rgba(255,248,225,.94); color: #193b4a; border-radius: 20px;
+            font-family: inherit; font-size: 18px;
+            font-weight: 750; letter-spacing: -0.5px; white-space: nowrap;
+            text-shadow: 0 1px 2px rgba(255,255,255,.6); cursor: pointer;
+        }
+        .game-container { position: relative; margin-top: var(--scene-space); gap: 10px; padding: 14px; background: var(--container-bg); }
+        .top-bar { padding-bottom: 2px; }
+        .pet-buddy { width: 36px; height: 44px; }
+        .pet-buddy.empty { border: 0; opacity: .7; }
+        .pet-buddy.empty::before { width: 28px; height: 28px; border: 1px dashed currentColor; border-radius: 8px; text-align: center; }
+        .level-display { font-size: 12px; gap: 3px; flex-direction: column; align-items: flex-start; }
+        .level-num { min-width: 30px; }
+        .xp-bar { width: 36px; flex: none; }
+        .play-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .stats { gap: 14px; background: none; padding: 0; flex: 1; justify-content: flex-start; }
+        .stat-item { gap: 4px; font-size: 14px; }
+        .stat-icon svg { width: 20px; height: 20px; }
+        .progress-container { background: none; padding: 0; gap: 8px; }
+        .progress-container .progress-item { gap: 4px; }
+        .progress-container svg { width: 26px !important; height: 26px !important; }
+        .progress-container .progress-bar { width: 40px; height: 6px; }
+        .combo-display { position: static; font-size: 13px; text-shadow: none; display: none; }
+        .combo-display.active { display: block; }
+        .settings-btn { width: 100%; min-height: 42px; border: 1px solid rgba(255,107,157,.65); border-radius: 12px; font-size: 14px; background: rgba(255,255,255,.035); }
+        .settings-panel { z-index: 20; }
+        .problem-area { flex: none; min-height: 154px; gap: 8px; padding: 2px 0; }
+        .problem { font-size: clamp(36px, 10vw, 44px); line-height: 1.15; }
+        .answer-display { min-width: 128px; min-height: 60px; padding: 7px 22px; font-size: 32px; box-shadow: none; border-width: 2px; background: rgba(8,24,40,.6); }
+        .answer-display.flash-correct { box-shadow: 0 0 18px rgba(107,203,119,.4); }
+        .feedback { min-height: 24px; font-size: 17px; text-align: center; line-height: 1.35; }
+        .numpad { padding-bottom: 0; gap: 8px; max-width: 320px; }
+        .numpad button { height: 56px; font-size: 28px; border-width: 1px; background: rgba(255,107,157,.12); }
+        .numpad button:hover { opacity: 1; }
+        .numpad button:active { background: rgba(255,107,157,.28); }
+        .welcome-screen { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 20; color: #193b4a; }
+        .welcome-screen[hidden] { display: none; }
+        body.welcome-open .game-container, body.welcome-open .game-brand { visibility: hidden; }
+        .welcome-heading { position: absolute; top: max(72px, 15svh); left: 20px; right: 20px; text-align: center; }
+        .welcome-heading h1 { color: var(--beach-ink, #193b4a); font-size: clamp(34px, 8.8vw, 56px); line-height: 1.1; letter-spacing: -1.5px; text-shadow: 0 2px rgba(255,255,255,.5); }
+        .welcome-crew { position: absolute; bottom: 29svh; left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: min(350px, calc(100% - 32px)); }
+        .welcome-friend { color: var(--sand-ink, #193b4a); text-align: center; font-weight: 700; font-size: 14px; }
+        .welcome-friend svg { width: 72px; max-width: 100%; height: 80px; display: block; margin: 0 auto 10px; image-rendering: pixelated; filter: drop-shadow(0 6px rgba(92,73,36,.14)); }
+        .welcome-play { position: absolute; bottom: max(76px, 15svh); left: 50%; transform: translateX(-50%); width: min(280px, calc(100% - 48px)); min-height: 60px; border: 0; border-radius: 16px; background: #ff6b9d; color: #202d42; font-family: inherit; font-size: 22px; font-weight: 750; box-shadow: 0 5px #c13d6b, 0 10px 20px rgba(45,55,58,.1); cursor: pointer; }
+        .welcome-play:focus-visible { outline: 3px solid white; outline-offset: 5px; }
+        #problem:focus { outline: none; }
+        .welcome-play:active { transform: translate(-50%, 3px); box-shadow: 0 2px #c13d6b; }
+        @media (min-width: 700px) and (min-height: 501px) {
+            .game-brand { top: 12px; }
+            .game-container { margin-top: 56px; gap: 12px; padding: 16px; }
+            .problem-area { min-height: 178px; }
+            .problem { font-size: 52px; }
+            .numpad button { height: 62px; font-size: 30px; }
+            .welcome-crew { width: 440px; gap: 28px; bottom: 23svh; }
+            .welcome-friend svg { width: 96px; height: 104px; }
+            .welcome-friend { font-size: 16px; }
+            .welcome-play { bottom: 9svh; }
+        }
+        @media (max-height: 740px) and (orientation: portrait) {
+            :root { --scene-space: 92px; }
+            .game-brand { top: max(4px, env(safe-area-inset-top)); padding: 5px 12px; font-size: 14px; }
+            .game-container { gap: 8px; padding: 12px; }
+            .problem-area { min-height: 132px; gap: 5px; }
+            .problem { font-size: 34px; }
+            .answer-display { min-height: 52px; font-size: 28px; }
+            .numpad button { height: 48px; font-size: 26px; }
+            .numpad { gap: 6px; }
+            .welcome-crew { bottom: 30svh; }
+        }
+        @media (max-height: 500px) and (orientation: landscape) {
+            :root { --scene-space: 48px; }
+            .game-brand { top: 4px; font-size: 14px; padding: 5px 12px; }
+            .game-container { display: grid; grid-template-columns: minmax(140px, .9fr) minmax(150px, 1fr) minmax(196px, 1.1fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'header header header' 'settings problem keypad' 'status problem keypad'; width: 100%; max-width: 940px; gap: 8px 16px; padding: 10px 14px; }
+            .top-bar { grid-area: header; }
+            .level-display { flex-direction: row; gap: 8px; }
+            .settings-wrapper { grid-area: settings; min-width: 0; }
+            .settings-toggle { display: flex; }
+            .settings-btn { padding: 8px; font-size: 12px; }
+            .play-status { grid-area: status; flex-direction: column; justify-content: flex-start; gap: 14px; }
+            .stats { width: 100%; flex: none; justify-content: center; }
+            .problem-area { grid-area: problem; min-width: 0; min-height: 140px; padding: 0; gap: 8px; }
+            .problem { font-size: 34px; }
+            .answer-display { font-size: 28px; min-height: 52px; }
+            .feedback { font-size: 15px; }
+            .numpad { grid-area: keypad; max-width: 280px; gap: 6px; }
+            .numpad button { height: 44px; font-size: 24px; }
+            .welcome-heading { top: 24px; }
+            .welcome-heading h1 { font-size: 34px; }
+            .welcome-crew { width: 320px; left: 28%; bottom: 36px; }
+            .welcome-friend svg { width: 56px; height: 64px; margin-bottom: 4px; }
+            .welcome-play { width: 200px; left: 75%; bottom: 55px; }
+        }
+        @media (max-width: 680px) and (orientation: landscape) {
+            .game-container { gap: 6px 10px; grid-template-columns: 125px minmax(120px,1fr) minmax(174px,1.2fr); padding: 8px; }
+            .problem { font-size: 28px; }
+            .welcome-crew { width: 270px; }
+        }
+        /* Shop and sticker book polish */
+        #shopModal #shopTabs,
+        #shopModal #shopGrid { width: 100%; max-width: 720px; }
+        #shopModal #shopTabs { gap: 6px; flex-shrink: 0; }
+        #shopModal #shopTabs .modal-tab { font-size: 14px; padding: 10px 12px; color: #ff94b9; border-color: #ff6b9d; }
+        #shopModal #shopTabs .modal-tab.active { color: #170e29; background: #ff80ad; }
+        #shopModal #shopGrid.modal-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 3px; }
+        #shopModal .modal-item { min-height: 138px; padding: 12px 6px; gap: 4px; border: 2px solid #394159; background: #121b30; color: #fff; font-family: inherit; border-radius: 12px; }
+        #shopModal .modal-item.equipped { border-color: #ffd93d; background: #292a32; }
+        #shopModal .modal-item.locked { opacity: 1; cursor: pointer; border-color: #30394e; background: #11192a; }
+        #shopModal .modal-item:focus-visible,
+        #shopModal .sticker-item:focus-visible,
+        #shopModal .sticker-missing summary:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+        #shopModal .modal-item-icon { width: 48px; height: 48px; margin: 0; flex-shrink: 0; }
+        #shopModal .modal-item-icon svg { width: 48px; height: 48px; }
+        #shopModal .modal-item-name { font-size: 14px; line-height: 1.2; min-height: 34px; width: 100%; color: #ff9abd; white-space: normal; overflow: visible; text-overflow: clip; display: flex; align-items: center; justify-content: center; }
+        #shopModal .modal-item-info { font-size: 13px; line-height: 1.25; color: #ffe478; margin-top: auto; min-height: 17px; gap: 3px; }
+        #shopModal .modal-item-info svg { width: 14px; height: 14px; flex-shrink: 0; }
+        #shopModal .rarity-badge { font-size: 11px; line-height: 1.2; letter-spacing: 0; padding: 3px 5px; }
+        #shopModal #costumePreview { width: 100%; max-width: 720px; height: auto; min-height: 116px; flex-shrink: 0; margin: 16px auto 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+        .shop-character { width: 96px; height: 96px; position: relative; }
+        .shop-character-art { position: absolute; width: 56px; height: 56px; top: 20px; left: 20px; transform: scale(1.7142857); transform-origin: center; }
+        .shop-preview-name { font-size: 15px; line-height: 1.25; color: #ffe478; margin: 0; }
+        .shop-character.dance-wiggle { animation: avatarDanceWiggle 0.5s ease-in-out infinite; }
+        .shop-character.dance-spin { animation: avatarDanceSpin 0.8s ease-in-out infinite; }
+        .shop-character.dance-bounce { animation: avatarDanceBounce 0.6s ease-in-out infinite; }
+        .shop-character.dance-victory { animation: avatarDanceVictory 0.7s ease-in-out infinite; }
+        #shopModal #costumePreview.sticker-summary { min-height: 0; gap: 8px; margin: 10px auto 20px; text-align: center; }
+        .sticker-summary strong { color: #ffe478; font-size: 18px; line-height: 1.25; }
+        .sticker-summary p { color: #d5dcee; font-size: 14px; line-height: 1.4; margin: 0; }
+        #shopModal #shopGrid.sticker-book { display: flex; flex-direction: column; gap: 22px; padding: 3px; }
+        .sticker-section { width: 100%; }
+        .sticker-section h3 { margin: 0 0 12px; font-size: 18px; line-height: 1.3; color: #ff9abd; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .sticker-section h3 span { color: #d5dcee; font-size: 14px; font-weight: normal; }
+        .sticker-category-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        #shopModal .sticker-item { width: 100%; min-height: 110px; aspect-ratio: auto; gap: 8px; padding: 10px 5px; background: #121b30; border-radius: 12px; font-family: inherit; }
+        #shopModal .sticker-item svg { width: 48px; height: 48px; flex-shrink: 0; }
+        #shopModal .sticker-item-name { font-size: 13px; line-height: 1.25; min-height: 32px; margin: 0; color: #ff9abd; white-space: normal; overflow: visible; text-overflow: clip; }
+        #shopModal .sticker-item.uncollected { opacity: 1; cursor: default; border-color: #30394e; }
+        #shopModal .sticker-item.uncollected svg { filter: brightness(0) invert(1); opacity: 0.4; }
+        #shopModal .sticker-item.uncollected .sticker-item-name { color: #c3cde2; }
+        .sticker-empty { color: #c3cde2; font-size: 14px; line-height: 1.4; margin: 0 0 8px; }
+        .sticker-missing { margin-top: 10px; }
+        .sticker-missing summary { color: #c3cde2; font-size: 14px; line-height: 1.3; min-height: 44px; padding: 12px 0; cursor: pointer; }
+        .sticker-missing .sticker-category-grid { margin-top: 8px; }
+        @media (min-width: 700px) {
+            #shopModal #shopGrid.modal-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+            .sticker-category-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+            #shopModal .modal-item-name { font-size: 15px; min-height: 36px; }
+            #shopModal .sticker-item-name { font-size: 14px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .shop-character[class*="dance-"] { animation: none; }
+        }
+
+        /* Mokulua polish: menu shells and rewards */
+        .menu-modal {
+            --menu-ink: #f8f5ff;
+            --menu-muted: #c9c7df;
+            --menu-pink: #ff8fb7;
+            --menu-gold: #ffd93d;
+            background: rgba(8, 13, 34, .76);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            overflow: hidden;
+            justify-content: center;
+            color: var(--menu-ink);
+        }
+        #shopModal.menu-modal, #themePicker.menu-modal, #achievementsModal.menu-modal,
+        #masteryModal.menu-modal, #transferModal.menu-modal { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+        .menu-panel {
+            width: 100%; max-width: 720px; max-height: 100%; min-height: 0;
+            display: flex; flex-direction: column; overflow: hidden;
+            background: var(--modal-surface, #151c37); border: 1px solid #505674;
+            border-radius: 22px; box-shadow: 0 18px 56px #050a205e;
+        }
+        .menu-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            flex: 0 0 auto; padding: 14px 16px; border-bottom: 1px solid #3d4565;
+        }
+        .menu-header h2, #shopModal .menu-header h2, #masteryModal .menu-header h2,
+        #themePicker .menu-header h2, #achievementsModal .menu-header h2 {
+            width: auto; max-width: none; margin: 0; text-align: left;
+            font-size: 1.25rem; line-height: 1.25; color: var(--menu-gold);
+        }
+        .menu-header .menu-close, #shopModal .menu-close, #masteryModal .menu-close {
+            width: auto; max-width: none; margin: 0; padding: 9px 16px;
+            min-height: 44px; flex: 0 0 auto; font-size: 1rem; font-weight: 650;
+            border-color: var(--menu-pink); color: var(--menu-pink); background: #242b48;
+        }
+        .menu-body {
+            width: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch; padding: 16px;
+            scrollbar-gutter: stable;
+        }
+        .menu-section-heading { color: var(--menu-ink); font-size: 1rem; margin: 0 0 10px; }
+        .menu-section-heading:not(:first-child) { margin-top: 24px; }
+        .menu-summary { color: var(--menu-muted); font-size: .95rem; line-height: 1.45; margin: 0 0 16px; }
+        #masteryModal .menu-panel { max-width: 460px; }
+        #masteryModal .mastery-grid, #masteryModal .mastery-legend, #masteryModal .modal-tabs { max-width: none; }
+        #shopModal .menu-body > .modal-tabs, #shopModal .menu-body > .modal-grid,
+        #shopModal .menu-body > .sticker-grid { max-width: 720px; }
+        #shopModal #shopTabs { position: sticky; top: -16px; z-index: 3; background: var(--modal-surface, #151c37); padding: 10px 0; border-bottom: 1px solid #3d4565; }
+        #themeButtons, #sceneButtons { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; align-items: stretch; }
+        #themePicker .theme-btn {
+            width: 100%; min-width: 0; max-width: none; margin: 0; padding: 0; overflow: hidden;
+            border: 2px solid #525a7d; border-radius: 14px; background: #202942;
+            color: #f8f5ff; font-size: .95rem; text-align: left; display: flex; flex-direction: column;
+        }
+        #themePicker .theme-btn.active { border-color: #ffd93d; box-shadow: 0 0 0 1px #ffd93d; }
+        #themePicker .theme-btn.locked { opacity: 1; cursor: default; }
+        #themePicker .theme-btn.locked .scene-preview { opacity: .55; }
+        .scene-preview { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; image-rendering: pixelated; background: #32435c; }
+        .theme-card-label { display: block; padding: 10px 10px 3px; font-weight: 700; line-height: 1.3; }
+        .theme-card-status { display: block; padding: 0 10px 11px; color: #c9c7df; font-size: .8rem; font-weight: 500; }
+        .theme-btn.active .theme-card-status { color: #ffe477; }
+        .weather-preview { position: relative; width: 100%; height: 58px; overflow: hidden; background: #71c7e7; }
+        .weather-preview::before { content: ''; position: absolute; width: 22px; height: 22px; background: #ffe477; right: 20px; top: 12px; box-shadow: 0 0 0 5px #ffe47744; }
+        .weather-preview::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 14px; background: #319bc4; }
+        .weather-preview.rain { background: repeating-linear-gradient(115deg, transparent 0 17px, #a2d5ed88 18px 20px, transparent 21px 38px), #405778; }
+        .weather-preview.rain::before { background: #8595a9; box-shadow: -16px 4px #8595a9, 16px 4px #8595a9; height: 10px; }
+        .weather-preview.snow { background: radial-gradient(circle, #fff 2px, transparent 3px) 0 0/24px 20px, #94b5ca; }
+        .weather-preview.snow::before { background: #eef8fc; box-shadow: none; }
+        .weather-preview.snow::after { background: #dceef5; }
+        .weather-preview.aurora { background: linear-gradient(120deg, #12163d 10%, #62dfad 32%, #655eaa 46%, #182647 70%); }
+        .weather-preview.aurora::before { width: 3px; height: 3px; background: white; box-shadow: -60px 6px #fff, -15px 16px #fff; }
+        .weather-preview.aurora::after { background: #233b61; }
+        .weather-preview.shootingstars { background: #161739; }
+        .weather-preview.shootingstars::before { width: 46px; height: 3px; top: 22px; transform: rotate(-28deg); background: linear-gradient(90deg, transparent, #f8f5ff); box-shadow: -44px -18px 0 -1px #d9dbfa; }
+        .weather-preview.shootingstars::after { background: #283557; }
+        .weather-preview.goldenhour { background: #e79b6b; }
+        .weather-preview.goldenhour::after { background: #b98165; }
+        #achievementsModal .achievements-grid { display: block; max-width: none; margin: 0; }
+        .achievement-section + .achievement-section { margin-top: 24px; }
+        .achievement-section h3 { margin-bottom: 10px; font-size: 1rem; color: #f8f5ff; }
+        .achievement-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+        #achievementsModal .achievement-item { padding: 13px 11px; text-align: left; background: #202942; border: 1px solid #505a7d; display: flex; gap: 10px; align-items: flex-start; }
+        #achievementsModal .achievement-item.unlocked { border-color: #c9ab50; }
+        #achievementsModal .achievement-item.locked { opacity: 1; }
+        .achievement-emoji { flex: 0 0 26px; margin: 0; }
+        #achievementsModal .achievement-name { display: block; font-size: .94rem; color: #f8f5ff; font-weight: 650; }
+        .achievement-description { display: block; font-size: .8rem; color: #c9c7df; line-height: 1.4; margin-top: 5px; }
+        .achievement-earned { display: block; font-size: .75rem; color: #ffe477; margin-top: 5px; }
+        #mysteryBoxModal.reward-modal {
+            --primary: #ff9fbe; --accent: #ffe477; --success: #8de69b; --text-color: #f8f5ff;
+            justify-content: center; gap: 12px; text-align: center;
+            background: radial-gradient(ellipse at 50% 43%, #29314f, #10172d 70%);
+            color: #f8f5ff;
+        }
+        #mysteryBoxModal .mystery-box > svg { width: min(240px,50vw) !important; height: auto !important; }
+        #mysteryBoxModal .mystery-reward { margin: 0; }
+        #mysteryBoxModal .mystery-text { margin: 0; color: #ffe477; line-height: 1.5; }
+        #mysteryBoxModal .mystery-text > div { color: #f8f5ff; }
+        #mysteryBoxModal .sticker-reveal > svg { width: clamp(112px,38vw,176px) !important; height: clamp(112px,38vw,176px) !important; }
+        #mysteryBoxModal .reward-sticker { gap: 16px; }
+        #mysteryBoxModal .reward-name { color: #ff9fbe; font-size: 1.4rem; font-weight: 700; }
+        #mysteryBoxModal .rarity-badge { font-size: .8rem; padding: 5px 10px; }
+        #mysteryCloseBtn { min-width: 160px; color: #ff9fbe; border-color: #ff9fbe; background: #242b48; }
+        .achievement-toast { top: max(14px, env(safe-area-inset-top)); width: max-content; max-width: min(360px, calc(100vw - 28px)); text-align: center; line-height: 1.35; padding: 12px 18px; }
+        .achievement-toast.celebration-streak { background: #222b46; color: #fff4d1; border: 1px solid #e5bd58; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        @media (min-width: 620px) { #themeButtons, #sceneButtons { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+        @media (max-width: 390px) { .achievement-list { grid-template-columns: 1fr; } .menu-header { padding: 12px; } .menu-body { padding: 12px; } }
+        @media (max-height: 500px) { #mysteryBoxModal.reward-modal { gap: 6px; } #mysteryBoxModal .sticker-reveal > svg { width: 96px !important; height: 96px !important; } #mysteryBoxModal .mystery-box > svg { width: 140px !important; } }
+        /* End Mokulua menu and reward polish */
+
+        /* Accessibility and readability polish */
+        button.mango-avatar,
+        button.pet-buddy { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; }
+        button.pet-buddy.empty { border: 2px dashed rgba(255,255,255,0.35); }
+        button:focus-visible,
+        [tabindex]:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+        .theme-snow {
+            --primary: #185487;
+            --accent: #174b7c;
+            --success: #176632;
+            --error: #a52636;
+            --text-color: #142c42;
+        }
+        .theme-snow .answer-display { background: #e3edf7; color: var(--primary); }
+        .theme-snow .settings-btn { color: var(--primary); background: #e3edf7; border-color: #7f9eb9; }
+        .theme-snow .settings-row button,
+        .theme-snow .numpad button { color: var(--primary); background: #e5edf8; border-color: #7f9eb9; }
+        .theme-snow .settings-row button.active { color: #fff; background: #185487; }
+        .theme-snow .numpad button.submit { color: var(--success); background: #dcefe2; border-color: var(--success); }
+        .theme-snow .numpad button.delete { color: var(--error); background: #f7e0e3; border-color: var(--error); }
+        .theme-snow .pet-buddy.empty { opacity: 1; border-color: #56748e; }
+        .theme-snow .pet-buddy.empty::before { color: #185487; }
+        .theme-snow .modal,
+        .theme-snow .strategy-overlay {
+            --primary: #83c5ff;
+            --accent: #b6dcff;
+            --success: #8be39a;
+            --error: #ff9c9c;
+            --text-color: #fff;
+            color: var(--text-color);
+        }
+
+        .strategy-overlay { justify-content: flex-start; overflow-y: auto; overscroll-behavior: contain; padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+        .strategy-overlay > * { flex-shrink: 0; }
+        .strategy-label { margin-top: auto; text-align: center; }
+        .strategy-problem { text-align: center; }
+        .strategy-step { text-align: center; }
+        .strategy-continue { min-height: 48px; min-width: 180px; padding: 10px 24px; margin: 18px 0 auto; border: 2px solid var(--primary); border-radius: 14px; background: #14243b; color: #fff; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
+        .strategy-continue:disabled { opacity: 0.45; cursor: default; }
+        @media (orientation: landscape) and (max-height: 540px) {
+            .strategy-overlay { display: grid; grid-template-columns: minmax(180px, 0.9fr) minmax(280px, 1.3fr); grid-template-areas: "label steps" "problem steps" "answer steps" "continue continue"; align-content: center; justify-items: center; gap: 10px 24px; }
+            .strategy-label { grid-area: label; margin: 0; align-self: end; }
+            .strategy-problem { grid-area: problem; margin: 0; font-size: 2rem; align-self: center; }
+            .strategy-steps { grid-area: steps; gap: 8px; max-width: 420px; }
+            .strategy-step { font-size: 1.05rem; padding: 10px 16px; }
+            .strategy-answer { grid-area: answer; margin: 0; align-self: start; }
+            .strategy-continue { grid-area: continue; margin: 0; }
+        }
+
+        button.mastery-cell { padding: 0; font-family: inherit; cursor: pointer; }
+        .mastery-cell.lv-silver { color: #000; }
+        .mastery-cell.lv-silver .mc-time { opacity: 1; }
+        .mastery-cell[aria-pressed="true"] { outline: 2px solid #fff; outline-offset: 1px; }
+        .mastery-detail { width: 100%; max-width: 380px; margin: 0 auto 14px; padding: 16px; border: 1px solid rgba(255,255,255,0.3); border-radius: 14px; background: #142237; color: #fff; text-align: center; font-size: 1rem; line-height: 1.5; }
+        .mastery-detail-equation { font-size: clamp(1.5rem, 6vw, 2rem); font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 6px; }
+        .mastery-detail-status { font-weight: 700; color: var(--accent); }
+        .mastery-detail p { margin: 0; }
+        .mastery-legend { font-size: 0.875rem; }
+
+        /* Move to a New Device. Two type sizes: 20px headings, 17px for the rest
+           (16px or more keeps iOS from zooming into the text box). */
+        .welcome-move { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); min-height: 44px; padding: 10px 16px; border: 0; border-radius: 20px; background: rgba(255,248,225,.94); color: #193b4a; font-family: inherit; font-size: 17px; font-weight: 750; line-height: 1.2; cursor: pointer; box-shadow: 0 3px rgba(25,59,74,.18); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        .welcome-move:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+        #transferModal .menu-panel { max-width: 620px; }
+        .transfer-modal .menu-body { font-size: 17px; line-height: 1.45; }
+        .transfer-modal [hidden] { display: none !important; }
+        .transfer-h { font-size: 1.25rem; line-height: 1.3; color: var(--menu-ink); margin: 0 0 12px; outline: none; }
+        .transfer-p { margin: 0 0 16px; color: var(--menu-ink); }
+        .transfer-fine { margin: 0 0 16px; color: var(--menu-muted); }
+        .transfer-btn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; min-height: 56px; margin: 0 0 12px; padding: 12px 16px; border: 0; border-radius: 16px; font-family: inherit; font-size: 17px; font-weight: 750; line-height: 1.25; text-align: center; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+        .transfer-btn:disabled { opacity: .5; cursor: default; }
+        .transfer-btn:focus-visible { outline: 3px solid var(--menu-gold); outline-offset: 3px; }
+        label.transfer-btn:has(.transfer-file:focus-visible) { outline: 3px solid var(--menu-gold); outline-offset: 3px; }
+        .transfer-primary { background: #ff6b9d; color: #202d42; }
+        .transfer-danger { background: #ff6b6b; color: #202d42; }
+        .transfer-quiet { background: #242b48; color: var(--menu-ink); border: 2px solid #505674; }
+        .transfer-sub { font-weight: 500; }
+        .transfer-file { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+        .transfer-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 0 0 16px; }
+        .transfer-card { background: #0f1530; border: 1px solid #3d4565; border-radius: 16px; padding: 14px; margin: 0 0 16px; }
+        .transfer-cards .transfer-card { margin: 0; }
+        .transfer-card-title { font-weight: 750; color: var(--menu-gold); margin: 0 0 8px; }
+        .transfer-card .transfer-fine { margin: 0 0 8px; }
+        .transfer-card .transfer-p { margin: 0; }
+        .transfer-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: var(--menu-muted); }
+        .transfer-row b { color: var(--menu-ink); font-weight: 700; text-align: right; }
+        .transfer-warn { margin: 0 0 16px; padding: 10px 14px; border-left: 4px solid var(--menu-gold); border-radius: 8px; background: rgba(255,217,61,.08); color: var(--menu-ink); }
+        .transfer-status { min-height: 1.45em; margin: 0 0 16px; color: var(--menu-muted); }
+        .transfer-status:empty { min-height: 0; margin: 0; }
+        .transfer-status.bad { color: #ff9c9c; }
+        .transfer-status.good { color: #8be39a; }
+        .transfer-text { display: block; width: 100%; min-height: 132px; margin: 0 0 16px; padding: 12px; border: 2px solid #505674; border-radius: 12px; background: #0b1026; color: var(--menu-ink); font-family: inherit; font-size: 17px; line-height: 1.4; resize: none; -webkit-user-select: text; user-select: text; }
+        .transfer-text:focus { outline: 3px solid var(--menu-gold); outline-offset: 2px; }
+        .transfer-rule { border: 0; border-top: 1px solid #3d4565; margin: 8px 0 20px; }
+
+        @keyframes accessibleNotice { 0%, 100% { opacity: 0; } 10%, 90% { opacity: 1; } }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+            html body .mango-avatar[class], html body .boss-emoji[class] { animation: none !important; }
+            .strategy-step, .strategy-answer { opacity: 1; transform: none; }
+            .mango-avatar, .pet-buddy svg, button:active { transform: none !important; }
+            .boss-emoji.defeated { opacity: 0; }
+            .lightning-effect, .coconut-projectile, .victory-confetti, .trail-particle, .sticker-sparkle, .victory-sparkle { display: none !important; }
+            .achievement-toast.show { transform: translateX(-50%); animation: accessibleNotice var(--toast-dur, 2500ms) linear forwards !important; }
+            .streak-celebration.show { transform: translateX(-50%); animation: accessibleNotice 1.5s linear forwards !important; }
+            .helper-message, .boss-speech { transform: translateX(-50%); animation: accessibleNotice 2.5s linear forwards !important; }
+        }
     </style>
 </head>
 <body>
@@ -4717,21 +5085,34 @@
         </symbol>
     </svg>
 
+    <button class="game-brand" type="button" onclick="showWelcomeScreen()" aria-label="Show Mokulua Math welcome screen">Mokulua Math</button>
+    <section class="welcome-screen" id="welcomeScreen" aria-labelledby="welcomeTitle" hidden>
+        <div class="welcome-heading"><h1 id="welcomeTitle">Mokulua Math</h1></div>
+        <div class="welcome-crew">
+            <div class="welcome-friend"><svg aria-hidden="true"><use href="#pixel-panda"/></svg><span>Taio</span></div>
+            <div class="welcome-friend"><svg aria-hidden="true"><use href="#pixel-hippo"/></svg><span>Hippy</span></div>
+            <div class="welcome-friend"><svg aria-hidden="true"><use href="#pixel-lion"/></svg><span>Shasha</span></div>
+            <div class="welcome-friend"><svg aria-hidden="true"><use href="#pixel-unicorn"/></svg><span>Uncorn</span></div>
+        </div>
+        <button class="welcome-play" id="welcomePlay" type="button" onclick="startFromWelcome()">Play</button>
+        <button class="welcome-move" id="welcomeMove" type="button" onclick="openTransferSheet()">Move to a New Device</button>
+    </section>
+
     <div class="game-container">
         <div class="top-bar">
-            <div class="mango-avatar" id="mangoAvatar" onclick="openShopModal()" title="Open the Shop!">
+            <button type="button" class="mango-avatar" id="mangoAvatar" onclick="openShopModal()" aria-label="Dress your character in the shop" title="Open the Shop!">
                 <svg class="pixel-mango" style="width:48px;height:48px;"><use href="#pixel-mango"/></svg>
                 <div class="costume-layer" id="costumeHatLayer"></div>
                 <div class="costume-layer" id="costumeOutfitLayer"></div>
                 <div class="costume-layer" id="costumeAccessoryLayer"></div>
-            </div>
-            <div class="pet-buddy idle empty" id="petBuddy" onclick="openShopModal('pets')" title="Pet companion"></div>
+            </button>
+            <button type="button" class="pet-buddy idle empty" id="petBuddy" onclick="openShopModal('pets')" aria-label="Choose a pet companion" title="Pet companion"></button>
             <div class="level-display" id="levelDisplay">Lv.1</div>
             <div class="top-buttons">
-                <button class="icon-btn" id="soundBtn" onclick="toggleSound()"><svg class="btn-icon"><use href="#icon-sound-on"/></svg></button>
-                <button class="icon-btn" onclick="showMasteryWall()" title="Fact Mastery Wall"><svg class="btn-icon"><use href="#icon-mastery"/></svg></button>
-                <button class="icon-btn" onclick="showAchievements()"><svg class="btn-icon"><use href="#icon-trophy"/></svg></button>
-                <button class="icon-btn" onclick="showThemePicker()"><svg class="btn-icon"><use href="#icon-theme"/></svg></button>
+                <button class="icon-btn" id="soundBtn" onclick="toggleSound()" aria-label="Sound" aria-pressed="true"><svg class="btn-icon"><use href="#icon-sound-on"/></svg></button>
+                <button class="icon-btn" onclick="showMasteryWall()" aria-label="Fact Mastery Wall" title="Fact Mastery Wall"><svg class="btn-icon"><use href="#icon-mastery"/></svg></button>
+                <button class="icon-btn" onclick="showAchievements()" aria-label="Achievements"><svg class="btn-icon"><use href="#icon-trophy"/></svg></button>
+                <button class="icon-btn" onclick="showThemePicker()" aria-label="Choose a theme"><svg class="btn-icon"><use href="#icon-theme"/></svg></button>
             </div>
         </div>
 
@@ -4753,6 +5134,7 @@
             </div>
         </div>
 
+        <div class="play-status">
         <div class="stats">
             <div class="stat-item" id="coinStat">
                 <span class="stat-icon"><svg class="pixel-coin"><use href="#pixel-coin"/></svg></span>
@@ -4762,7 +5144,7 @@
                 <span class="stat-icon"><svg class="pixel-fire"><use href="#pixel-fire"/></svg></span>
                 <span id="streak">0</span>
             </div>
-        </div>
+            </div>
 
         <div class="progress-container">
             <div class="progress-item">
@@ -4775,11 +5157,12 @@
         </div>
 
         <div class="combo-display" id="comboDisplay">x1</div>
+        </div>
 
         <div class="problem-area">
-            <div class="problem" id="problem"></div>
+            <div class="problem" id="problem" tabindex="-1"></div>
             <div class="answer-display" id="answerDisplay"><span class="cursor">|</span></div>
-            <div class="feedback" id="feedback"></div>
+            <div class="feedback" id="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
         </div>
 
         <div class="numpad">
@@ -4792,9 +5175,9 @@
             <button onclick="numPress(7)">7</button>
             <button onclick="numPress(8)">8</button>
             <button onclick="numPress(9)">9</button>
-            <button class="delete" onclick="deletePress()">⌫</button>
+            <button class="delete" aria-label="Delete last digit" onclick="deletePress()">⌫</button>
             <button onclick="numPress(0)">0</button>
-            <button class="submit" onclick="checkAnswer()">GO</button>
+            <button class="submit" aria-label="Check answer" onclick="checkAnswer()">GO</button>
         </div>
     </div>
 
@@ -4804,17 +5187,25 @@
     <div class="streak-celebration" id="streakCelebration"></div>
 
     <!-- Theme Picker -->
-    <div class="modal theme-picker" id="themePicker">
-        <h2>Pick a Theme</h2>
+    <div class="modal menu-modal theme-picker" id="themePicker">
+        <div class="menu-panel">
+            <header class="menu-header">
+        <h2>Your Beach</h2>
+                <button class="close-btn menu-close" onclick="hideThemePicker()">Done</button>
+            </header>
+            <div class="menu-body">
+        <h3 class="menu-section-heading">Weather</h3>
         <div id="themeButtons"></div>
-        <h2 style="margin-top:20px;">🏝️ Beach Scene</h2>
+        <h3 class="menu-section-heading">Beach scene</h3>
         <div id="sceneButtons"></div>
-        <button class="close-btn" onclick="hideThemePicker()">Done</button>
+
+            </div>
+        </div>
     </div>
 
     <!-- Mystery Box -->
-    <div class="modal" id="mysteryBoxModal">
-        <div class="mystery-box" id="mysteryBox" onclick="openMysteryBox()">
+    <div class="modal reward-modal" id="mysteryBoxModal">
+        <div class="mystery-box" id="mysteryBox" role="button" tabindex="0" aria-label="Open mystery box" onclick="openMysteryBox()" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
             <svg class="pixel-box" style="width:240px;height:240px;cursor:pointer;"><use href="#pixel-mysterybox"/></svg>
         </div>
         <div class="mystery-reward" id="mysteryReward"></div>
@@ -4846,43 +5237,57 @@
                 <button onclick="bossNumPress(7)">7</button>
                 <button onclick="bossNumPress(8)">8</button>
                 <button onclick="bossNumPress(9)">9</button>
-                <button class="delete" onclick="bossDeletePress()">⌫</button>
+                <button class="delete" aria-label="Delete last digit" onclick="bossDeletePress()">⌫</button>
                 <button onclick="bossNumPress(0)">0</button>
-                <button class="submit" onclick="bossCheckAnswer()">GO</button>
+                <button class="submit" aria-label="Check answer" onclick="bossCheckAnswer()">GO</button>
             </div>
         </div>
         <div class="boss-victory hidden" id="bossVictory"></div>
     </div>
 
     <!-- Strategy Hint Overlay -->
-    <div class="strategy-overlay" id="strategyOverlay" onclick="dismissStrategyHint()">
+    <div class="strategy-overlay" id="strategyOverlay" aria-labelledby="strategyLabel" aria-describedby="strategyProblem strategySteps strategyAnswer">
         <div class="strategy-label" id="strategyLabel">Making Tens</div>
         <div class="strategy-problem" id="strategyProblem">8 + 7 = ?</div>
         <div class="strategy-steps" id="strategySteps">
             <!-- Steps populated by JS -->
         </div>
         <div class="strategy-answer" id="strategyAnswer">= 15</div>
-        <div class="strategy-tap">Tap anywhere to continue</div>
+        <button type="button" class="strategy-continue" id="strategyContinue" onclick="dismissStrategyHint()" disabled>Continue</button>
     </div>
 
     <!-- Achievements Modal -->
-    <div class="modal" id="achievementsModal">
-        <h2 style="color: var(--accent);">🏆 Achievements</h2>
+    <div class="modal menu-modal" id="achievementsModal">
+        <div class="menu-panel">
+            <header class="menu-header">
+        <h2>Achievements</h2>
+                <button class="close-btn menu-close" onclick="hideAchievements()">Done</button>
+            </header>
+            <div class="menu-body">
+        <p class="menu-summary" id="achievementSummary"></p>
         <div class="achievements-grid" id="achievementsGrid"></div>
-        <button class="close-btn" onclick="hideAchievements()">Done</button>
+
+            </div>
+        </div>
     </div>
 
     <!-- Fact Mastery Wall -->
-    <div class="modal mastery-modal" id="masteryModal">
-        <h2 style="color: var(--accent);">Fact Mastery Wall</h2>
+    <div class="modal menu-modal mastery-modal" id="masteryModal">
+        <div class="menu-panel">
+            <header class="menu-header">
+        <h2>Fact Mastery Wall</h2>
+                <button class="close-btn menu-close" onclick="hideMasteryWall()">Done</button>
+            </header>
+            <div class="menu-body">
         <div class="mastery-summary" id="masterySummary"></div>
         <div class="modal-tabs" id="masteryTabs">
-            <button class="modal-tab active" data-mtab="multiply" onclick="showMasteryTab('multiply')">×</button>
-            <button class="modal-tab" data-mtab="add" onclick="showMasteryTab('add')">+</button>
-            <button class="modal-tab" data-mtab="subtract" onclick="showMasteryTab('subtract')">−</button>
-            <button class="modal-tab" data-mtab="divide" onclick="showMasteryTab('divide')">÷</button>
+            <button class="modal-tab active" data-mtab="multiply" aria-label="Multiplication facts" onclick="showMasteryTab('multiply')">×</button>
+            <button class="modal-tab" data-mtab="add" aria-label="Addition facts" onclick="showMasteryTab('add')">+</button>
+            <button class="modal-tab" data-mtab="subtract" aria-label="Subtraction facts" onclick="showMasteryTab('subtract')">−</button>
+            <button class="modal-tab" data-mtab="divide" aria-label="Division facts" onclick="showMasteryTab('divide')">÷</button>
         </div>
-        <div class="mastery-grid" id="masteryGrid"></div>
+        <p class="sr-only" id="masteryInstructions">Choose a fact for a closer look. Use arrow keys to move between facts.</p>
+        <div class="mastery-grid" id="masteryGrid" role="group" aria-label="Fact overview" aria-describedby="masteryInstructions"></div>
         <div class="mastery-legend">
             <span class="leg l-new">New</span>
             <span class="leg l-learning">Learning</span>
@@ -4890,37 +5295,576 @@
             <span class="leg l-silver">Silver &lt;3s</span>
             <span class="leg l-gold">Gold &lt;2s</span>
         </div>
-        <button class="close-btn" onclick="hideMasteryWall()">Done</button>
+        <section class="mastery-detail" id="masteryDetail" aria-live="polite" aria-atomic="true"><p>Tap a fact for a closer look.</p></section>
+
+            </div>
+        </div>
     </div>
 
     <!-- Achievement Toast -->
     <div class="achievement-toast" id="achievementToast"></div>
 
     <!-- Shop Modal (costumes + power-ups) -->
-    <div class="modal" id="shopModal">
-        <h2 style="color: var(--accent);">Shop <span id="shopCoinDisplay" style="font-size:1rem;margin-left:10px;"><svg class="pixel-coin" style="width:18px;height:18px;vertical-align:middle;"><use href="#pixel-coin"/></svg> <span id="shopCoinCount">0</span></span></h2>
+    <div class="modal menu-modal" id="shopModal">
+        <div class="menu-panel">
+            <header class="menu-header">
+        <h2>Shop <span id="shopCoinDisplay" style="font-size:1rem;margin-left:10px;"><svg class="pixel-coin" style="width:18px;height:18px;vertical-align:middle;"><use href="#pixel-coin"/></svg> <span id="shopCoinCount">0</span></span></h2>
+                <button class="close-btn menu-close" onclick="closeShopModal()">Done</button>
+            </header>
+            <div class="menu-body">
         <div class="costume-preview" id="costumePreview"></div>
         <div class="modal-tabs" id="shopTabs">
             <button class="modal-tab" data-tab="avatars" onclick="showShopTab('avatars')">Avatar</button>
             <button class="modal-tab active" data-tab="hats" onclick="showShopTab('hats')">Hats</button>
             <button class="modal-tab" data-tab="outfits" onclick="showShopTab('outfits')">Outfits</button>
-            <button class="modal-tab" data-tab="accessories" onclick="showShopTab('accessories')">Acc</button>
+            <button class="modal-tab" data-tab="accessories" onclick="showShopTab('accessories')">Accessories</button>
             <button class="modal-tab" data-tab="pets" onclick="showShopTab('pets')">Pets</button>
             <button class="modal-tab" data-tab="trails" onclick="showShopTab('trails')">Trails</button>
             <button class="modal-tab" data-tab="dances" onclick="showShopTab('dances')">Dances</button>
             <button class="modal-tab" data-tab="stickers" onclick="showShopTab('stickers')">Stickers</button>
         </div>
         <div class="modal-grid" id="shopGrid"></div>
-        <button class="close-btn" onclick="closeShopModal()">Done</button>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Move to a New Device (filled in by openTransferSheet) -->
+    <div class="modal menu-modal transfer-modal" id="transferModal" aria-labelledby="transferTitle">
+        <div class="menu-panel">
+            <header class="menu-header">
+                <h2 id="transferTitle">Move to a New Device</h2>
+                <button class="close-btn menu-close" id="transferClose" type="button" onclick="closeTransferSheet()">Close</button>
+            </header>
+            <div class="menu-body" id="transferBody"></div>
+        </div>
     </div>
 
     <script>
+        /* save-transfer:begin */
+        // Save transfer: moves one child's progress from one device to another as
+        // a small text file (or a pasted code). Pure logic only: no page elements
+        // and no game state, so tests can drive it with a Map-backed storage. The
+        // sheet that uses it is openTransferSheet() in the main script.
+        //
+        // Only the keys in TRANSFER_KEYS are ever read or written. The storage area
+        // is shared with every other app on the same GitHub Pages address, so this
+        // code never lists, dumps or clears the whole store. Values move as the raw
+        // stored strings, byte for byte; the game's own loader does any migrating.
+        const SaveTransfer = (() => {
+            const TRANSFER_KEYS = Object.freeze([
+                'mathblaster_version',
+                'mathblaster_xp',
+                'mathblaster_coins',
+                'mathblaster_purchased_costumes',
+                'mathblaster_costumes',
+                'mathblaster_avatar',
+                'mathblaster_dances',
+                'mathblaster_equippedDance',
+                'mathblaster_trails',
+                'mathblaster_equippedTrail',
+                'mathblaster_pets',
+                'mathblaster_equippedPet',
+                'mathblaster_stickers',
+                'mathblaster_box_progress',
+                'mathblaster_achievements',
+                'mathblaster_stats',
+                'mathblaster_facts_sm2',
+                'mathblaster_tiers',
+                'mathblaster_tier_tracking',
+                'mathblaster_op_accuracy',
+                'mathblaster_last_session_ts',
+                'mathblaster_selected_ops',
+                'mathblaster_theme',
+                'mathblaster_scene',
+                'mathblaster_sound',
+                'mathblaster_welcome_seen',
+            ]);
+
+            // Keys the game knows about but deliberately leaves behind. The old
+            // adaptive key is deleted on every start.
+            const NOT_TRANSFERRED = Object.freeze(['mathblaster_adaptive']);
+
+            // A file must carry both: without the version the loader reruns every
+            // migration, and one of them overwrites XP.
+            const REQUIRED_KEYS = Object.freeze(['mathblaster_version', 'mathblaster_xp']);
+
+            // One copy of whatever this device had before the last import, for Undo.
+            const TRANSFER_BACKUP_KEY = 'mathblaster_transfer_backup';
+
+            const TRANSFER_FORMAT = 1;
+            const MAX_TRANSFER_CHARS = 1000000;
+            const BLOCK_BEGIN = '[MOKULUA-MATH-SAVE]';
+            const BLOCK_END = '[END MOKULUA-MATH-SAVE]';
+
+            const APP = 'mokulua-math';
+            const KIND = 'save-transfer';
+            const BACKUP_KIND = 'transfer-backup';
+            const LINE_WIDTH = 76;
+
+            const MESSAGES = Object.freeze({
+                empty: 'Nothing to read yet. Choose the save file, or paste the save code.',
+                tooBig: 'That file is too big to be a Mokulua Math save. Check that you picked the right file.',
+                notASave: 'That is not a Mokulua Math save. Look for the file named "Mokulua Math save".',
+                damaged: 'This save is damaged or cut off. Send it again from the old device.',
+                tooNew: 'This save came from a newer version of Mokulua Math. Close the game completely, open it again, then try again.',
+                noProgress: 'This save has no game progress in it. Send it again from the old device.',
+                storageFailed: 'This device could not store the progress, so nothing was changed.',
+                noBackup: 'There is no import to undo.',
+            });
+
+            function fail(error) {
+                return { ok: false, error, message: MESSAGES[error] };
+            }
+
+            function isPlainObject(value) {
+                return value !== null && typeof value === 'object' && !Array.isArray(value);
+            }
+
+            function hasOwn(obj, key) {
+                return Object.prototype.hasOwnProperty.call(obj, key);
+            }
+
+            const isNum = v => typeof v === 'number' && Number.isFinite(v);
+            const isStr = v => typeof v === 'string';
+            const isBool = v => typeof v === 'boolean';
+            const isStrOrNull = v => v === null || typeof v === 'string';
+            const isStrArray = v => Array.isArray(v) && v.every(isStr);
+            const isStrObject = v => isPlainObject(v) && Object.values(v).every(isStr);
+            const optional = (v, check) => v === undefined || check(v);
+
+            // Fields the game builds for every fact. A saved fact that carried one
+            // of these would overwrite the real question when the game loads it.
+            const FACT_BUILT_FIELDS = ['id', 'op', 'num1', 'num2', 'answer', 'tier', 'commutativeId'];
+
+            // Each check refuses a value that would stop the game from starting.
+            // They mirror what the game itself writes, so a real save always passes.
+            const VALIDATORS = {
+                mathblaster_version: v => Number.isInteger(v) && v >= 4,
+                mathblaster_xp: isNum,
+                mathblaster_coins: isNum,
+                mathblaster_purchased_costumes: isStrArray,
+                mathblaster_costumes: isStrObject,
+                mathblaster_avatar: isStr,
+                mathblaster_dances: isStrArray,
+                mathblaster_equippedDance: isStrOrNull,
+                mathblaster_trails: isStrArray,
+                mathblaster_equippedTrail: isStrOrNull,
+                mathblaster_pets: isStrArray,
+                mathblaster_equippedPet: isStrOrNull,
+                mathblaster_stickers: isStrArray,
+                mathblaster_box_progress: isPlainObject,
+                mathblaster_achievements: isStrArray,
+                mathblaster_stats: v => isPlainObject(v)
+                    && optional(v.themesUnlocked, isStrArray)
+                    && optional(v.scenesUnlocked, isStrArray)
+                    && optional(v.uniqueBossesDefeated, isPlainObject),
+                mathblaster_facts_sm2: v => isPlainObject(v) && Object.values(v).every(f =>
+                    isPlainObject(f) && FACT_BUILT_FIELDS.every(field => !hasOwn(f, field))),
+                mathblaster_tiers: isPlainObject,
+                mathblaster_tier_tracking: isPlainObject,
+                mathblaster_op_accuracy: isPlainObject,
+                mathblaster_last_session_ts: isNum,
+                mathblaster_selected_ops: isStrArray,
+                mathblaster_theme: isStr,
+                mathblaster_scene: isStr,
+                mathblaster_sound: isBool,
+                mathblaster_welcome_seen: isBool,
+            };
+
+            // FNV-1a over UTF-16 code units. Not security, just a tripwire for a code
+            // that still decodes but had a character changed along the way.
+            function fnv1a32(str) {
+                let h = 0x811c9dc5;
+                for (let i = 0; i < str.length; i++) {
+                    h ^= str.charCodeAt(i);
+                    h = Math.imul(h, 0x01000193);
+                }
+                return (h >>> 0).toString(16).padStart(8, '0');
+            }
+
+            function utf8ToBase64(str) {
+                const bytes = new TextEncoder().encode(str);
+                let bin = '';
+                for (let i = 0; i < bytes.length; i += 0x8000) {
+                    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+                }
+                return btoa(bin);
+            }
+
+            function base64ToUtf8(b64) {
+                const bin = atob(b64);
+                const bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+            }
+
+            function wrapLines(str, width) {
+                const lines = [];
+                for (let i = 0; i < str.length; i += width) lines.push(str.slice(i, i + width));
+                return lines.join('\n');
+            }
+
+            function localDate(ms) {
+                const d = new Date(ms);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+
+            function readKeys(storage) {
+                const keys = {};
+                for (const key of TRANSFER_KEYS) {
+                    const value = storage.getItem(key);
+                    if (value !== null && value !== undefined) keys[key] = value;
+                }
+                return keys;
+            }
+
+            function parseValue(keys, key) {
+                if (!hasOwn(keys, key)) return undefined;
+                try {
+                    return JSON.parse(keys[key]);
+                } catch (e) {
+                    return undefined;
+                }
+            }
+
+            // ------------------------------------------------------------------
+            // Save preview
+            // ------------------------------------------------------------------
+
+            // catalog = { levelFromXP, avatarName(id), achievementIds, stickerTotal,
+            // factIds (a Set) }, all taken from the running game.
+            // Counts mirror the game's own screens: "Lv.N", the Mastery Wall's
+            // practiced facts, "X of 32 earned" and the sticker book.
+            function describeSave(keys, catalog) {
+                const xp = parseValue(keys, 'mathblaster_xp');
+                const coins = parseValue(keys, 'mathblaster_coins');
+                const avatar = parseValue(keys, 'mathblaster_avatar');
+                const facts = parseValue(keys, 'mathblaster_facts_sm2');
+                const achievements = parseValue(keys, 'mathblaster_achievements');
+                const stickers = parseValue(keys, 'mathblaster_stickers');
+                const purchases = parseValue(keys, 'mathblaster_purchased_costumes');
+
+                const summary = {
+                    xp: isNum(xp) && xp > 0 ? xp : 0,
+                    level: 1,
+                    coins: isNum(coins) && coins > 0 ? coins : 0,
+                    avatarId: isStr(avatar) ? avatar : null,
+                    character: catalog.avatarName(isStr(avatar) ? avatar : null),
+                    factsPracticed: 0,
+                    factsTotal: catalog.factIds.size,
+                    answers: 0,
+                    achievements: 0,
+                    achievementsTotal: catalog.achievementIds.length,
+                    stickers: Array.isArray(stickers) ? stickers.length : 0,
+                    stickersTotal: catalog.stickerTotal,
+                    isEmpty: true,
+                };
+                summary.level = catalog.levelFromXP(summary.xp);
+
+                // Practiced means a real answer was graded: the Mastery Wall's own
+                // test (attempts), or a review date for saves older than attempts.
+                // Unknown fact ids are dropped by the game, so they are skipped here.
+                if (isPlainObject(facts)) {
+                    for (const [id, fact] of Object.entries(facts)) {
+                        if (!catalog.factIds.has(id) || !isPlainObject(fact)) continue;
+                        const attempts = isNum(fact.attempts) && fact.attempts > 0 ? fact.attempts : 0;
+                        if (attempts > 0 || (fact.lastReview !== null && fact.lastReview !== undefined)) summary.factsPracticed++;
+                        summary.answers += attempts;
+                    }
+                }
+                if (Array.isArray(achievements)) {
+                    summary.achievements = catalog.achievementIds.filter(id => achievements.includes(id)).length;
+                }
+
+                // The character is ignored on purpose: picking one is not progress.
+                summary.isEmpty = summary.xp === 0
+                    && summary.coins === 0
+                    && summary.factsPracticed === 0
+                    && summary.achievements === 0
+                    && summary.stickers === 0
+                    && !(Array.isArray(purchases) && purchases.length > 0);
+                return summary;
+            }
+
+            // True when `summary` is ahead of `other` on anything a kid earns by
+            // playing. XP and answers keep growing long after the collections are
+            // full. Coins are left out: spending them in the shop is not a loss.
+            function hasMoreProgress(summary, other) {
+                return summary.xp > other.xp
+                    || summary.factsPracticed > other.factsPracticed
+                    || summary.answers > other.answers
+                    || summary.achievements > other.achievements
+                    || summary.stickers > other.stickers;
+            }
+
+            // ------------------------------------------------------------------
+            // Export
+            // ------------------------------------------------------------------
+
+            function transferFileName(summary, now) {
+                const parts = ['Mokulua Math save', summary.character, `Level ${summary.level}`, localDate(now)];
+                return `${parts.join(' - ').replace(/[\\/:*?"<>|]/g, '')}.txt`;
+            }
+
+            function transferHeader(summary, now) {
+                return [
+                    'Mokulua Math save file',
+                    `Character: ${summary.character}`,
+                    `Level: ${summary.level}`,
+                    `Coins: ${summary.coins}`,
+                    `Saved: ${localDate(now)}`,
+                    'This file moves a child\'s progress to another device.',
+                    'On the new device, open Mokulua Math the same way your child plays it:',
+                    'from the Home Screen icon, or in Safari.',
+                    'In Safari the address is xy808yx.github.io/mokulua-math',
+                    'On the welcome screen, tap Move to a New Device, then Receive progress.',
+                    'If the game is already playing, tap Mokulua Math at the top first.',
+                ].join('\n');
+            }
+
+            // Reads only. Returns the text that goes into the file (and the
+            // clipboard), the file name, and a summary for the screen.
+            function buildTransferCode(storage, { now = Date.now(), catalog }) {
+                const keys = readKeys(storage);
+                const summary = describeSave(keys, catalog);
+                const envelope = {
+                    app: APP,
+                    kind: KIND,
+                    format: TRANSFER_FORMAT,
+                    exportedAt: new Date(now).toISOString(),
+                    check: fnv1a32(JSON.stringify(keys)),
+                    keys,
+                };
+                const code = wrapLines(utf8ToBase64(JSON.stringify(envelope)), LINE_WIDTH);
+                const text = `${transferHeader(summary, now)}\n\n${BLOCK_BEGIN}\n${code}\n${BLOCK_END}\n`;
+                return { text, fileName: transferFileName(summary, now), summary };
+            }
+
+            // ------------------------------------------------------------------
+            // Import
+            // ------------------------------------------------------------------
+
+            function isJSON(raw) {
+                try {
+                    JSON.parse(raw);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function validateKeyValue(key, raw) {
+                let value;
+                try {
+                    value = JSON.parse(raw);
+                } catch (e) {
+                    return false;
+                }
+                const check = VALIDATORS[key];
+                return !!check && check(value);
+            }
+
+            // Returns { ok: true, keys, exportedAt, ignoredKeys } or
+            // { ok: false, error, message }. Tolerates wrapped lines, CRLF, text
+            // around the block and a bare code.
+            function parseTransferCode(text) {
+                if (typeof text !== 'string' || !text.trim()) return fail('empty');
+                if (text.length > MAX_TRANSFER_CHARS) return fail('tooBig');
+
+                let body = text;
+                let framed = false;
+                const begin = text.indexOf(BLOCK_BEGIN);
+                if (begin >= 0) {
+                    const end = text.indexOf(BLOCK_END, begin + BLOCK_BEGIN.length);
+                    if (end < 0) return fail('damaged');
+                    body = text.slice(begin + BLOCK_BEGIN.length, end);
+                    framed = true;
+                }
+                // A bare paste that fails to decode is most likely not ours at all.
+                const decodeError = framed ? 'damaged' : 'notASave';
+
+                let b64 = body.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+                if (!b64 || !/^[A-Za-z0-9+/]+$/.test(b64) || b64.length % 4 === 1) return fail(decodeError);
+                while (b64.length % 4) b64 += '=';
+
+                let envelope;
+                try {
+                    envelope = JSON.parse(base64ToUtf8(b64));
+                } catch (e) {
+                    return fail(decodeError);
+                }
+                if (!isPlainObject(envelope) || envelope.app !== APP || envelope.kind !== KIND) return fail('notASave');
+                if (!Number.isInteger(envelope.format) || envelope.format < 1) return fail('damaged');
+                if (envelope.format > TRANSFER_FORMAT) return fail('tooNew');
+                if (!isPlainObject(envelope.keys)) return fail('damaged');
+                if (envelope.check !== fnv1a32(JSON.stringify(envelope.keys))) return fail('damaged');
+
+                const keys = {};
+                const ignoredKeys = [];
+                for (const [key, value] of Object.entries(envelope.keys)) {
+                    if (!TRANSFER_KEYS.includes(key)) {
+                        ignoredKeys.push(key);
+                        continue;
+                    }
+                    if (typeof value !== 'string') return fail('damaged');
+                    keys[key] = value;
+                }
+
+                // Saves from before February 2026 can hold a theme, scene or
+                // character as bare text. The game cannot read those either and
+                // uses its default, so they are left behind instead of refusing
+                // the whole save.
+                for (const key of Object.keys(keys)) {
+                    if (REQUIRED_KEYS.includes(key) || isJSON(keys[key])) continue;
+                    delete keys[key];
+                    ignoredKeys.push(key);
+                }
+
+                if (!REQUIRED_KEYS.every(key => hasOwn(keys, key))) return fail('noProgress');
+                for (const [key, value] of Object.entries(keys)) {
+                    if (!validateKeyValue(key, value)) return fail('damaged');
+                }
+
+                const exportedAtMs = typeof envelope.exportedAt === 'string' ? Date.parse(envelope.exportedAt) : NaN;
+                return {
+                    ok: true,
+                    keys,
+                    exportedAt: Number.isFinite(exportedAtMs) ? exportedAtMs : null,
+                    ignoredKeys,
+                };
+            }
+
+            // True when importing these values would change nothing here
+            // (absent == absent). The game rewrites its last-opened time on
+            // every start, so that one is not compared.
+            function sameSaves(keys, storage) {
+                return TRANSFER_KEYS.every(key => {
+                    if (key === 'mathblaster_last_session_ts') return true;
+                    const incoming = hasOwn(keys, key) ? keys[key] : null;
+                    return incoming === storage.getItem(key);
+                });
+            }
+
+            function snapshot(storage, list) {
+                const out = {};
+                for (const key of list) out[key] = storage.getItem(key);
+                return out;
+            }
+
+            function restoreSnapshot(storage, snap) {
+                for (const [key, value] of Object.entries(snap)) {
+                    try {
+                        if (value === null || value === undefined) storage.removeItem(key);
+                        else storage.setItem(key, value);
+                    } catch (e) { /* best effort */ }
+                }
+            }
+
+            // Replace rule: every transfer key the file has is set, every one it
+            // lacks is removed, nothing else is touched. Removing matters: a costume
+            // left over from this device would otherwise mix into the moved save.
+            function writeKeys(storage, keys) {
+                for (const key of TRANSFER_KEYS) {
+                    if (hasOwn(keys, key)) storage.setItem(key, keys[key]);
+                    else storage.removeItem(key);
+                }
+            }
+
+            // Saves the current values as the Undo copy, then writes the file's
+            // values. Any failed write puts everything back the way it was.
+            function applyTransfer(storage, keys, { now = Date.now() } = {}) {
+                if (!isPlainObject(keys) || !Object.values(keys).every(isStr)) return fail('damaged');
+                return replaceKeeping(storage, keys, 'import', now);
+            }
+
+            // The Undo copy is a single slot that always holds the other version
+            // of this device's progress. `reason` says which step it undoes:
+            // 'import' (it holds what was here before the import) or 'undo' (it
+            // holds the moved progress an Undo set aside).
+            function replaceKeeping(storage, keys, reason, now) {
+                const before = snapshot(storage, [...TRANSFER_KEYS, TRANSFER_BACKUP_KEY]);
+                const backupKeys = {};
+                for (const key of TRANSFER_KEYS) {
+                    if (before[key] !== null && before[key] !== undefined) backupKeys[key] = before[key];
+                }
+                const backup = {
+                    app: APP,
+                    kind: BACKUP_KIND,
+                    format: TRANSFER_FORMAT,
+                    savedAt: new Date(now).toISOString(),
+                    reason,
+                    keys: backupKeys,
+                };
+                try {
+                    storage.setItem(TRANSFER_BACKUP_KEY, JSON.stringify(backup));
+                    writeKeys(storage, keys);
+                } catch (e) {
+                    // Free the new Undo copy first: it holds a full duplicate of the
+                    // old values, so without it every old value is sure to fit back
+                    // in. The snapshot lists the old Undo copy last, so it is
+                    // restored after them.
+                    try { storage.removeItem(TRANSFER_BACKUP_KEY); } catch (e2) { /* best effort */ }
+                    restoreSnapshot(storage, before);
+                    return fail('storageFailed');
+                }
+                return { ok: true };
+            }
+
+            // Returns { savedAt, keys } or null when there is no usable Undo copy.
+            function readBackup(storage) {
+                const raw = storage.getItem(TRANSFER_BACKUP_KEY);
+                if (raw === null || raw === undefined) return null;
+                let data;
+                try {
+                    data = JSON.parse(raw);
+                } catch (e) {
+                    return null;
+                }
+                if (!isPlainObject(data) || data.app !== APP || data.kind !== BACKUP_KIND || !isPlainObject(data.keys)) return null;
+                const keys = {};
+                for (const [key, value] of Object.entries(data.keys)) {
+                    if (!TRANSFER_KEYS.includes(key) || !isStr(value)) return null;
+                    keys[key] = value;
+                }
+                const savedAt = typeof data.savedAt === 'string' ? Date.parse(data.savedAt) : NaN;
+                return {
+                    savedAt: Number.isFinite(savedAt) ? savedAt : null,
+                    reason: data.reason === 'undo' ? 'undo' : 'import',
+                    keys,
+                };
+            }
+
+            // Swaps in the Undo copy and keeps what is here now as the new Undo
+            // copy, so an Undo never throws progress away: tapping it again
+            // switches back. The button is on the kids' welcome screen.
+            function undoLastImport(storage, { now = Date.now() } = {}) {
+                const backup = readBackup(storage);
+                if (!backup) return fail('noBackup');
+                return replaceKeeping(storage, backup.keys, backup.reason === 'import' ? 'undo' : 'import', now);
+            }
+
+            return Object.freeze({
+                TRANSFER_KEYS, NOT_TRANSFERRED, REQUIRED_KEYS, TRANSFER_BACKUP_KEY, TRANSFER_FORMAT,
+                MAX_TRANSFER_CHARS, BLOCK_BEGIN, BLOCK_END, MESSAGES,
+                fnv1a32, readKeys, describeSave, hasMoreProgress, transferFileName, buildTransferCode,
+                parseTransferCode, sameSaves, applyTransfer, readBackup, undoLastImport,
+            });
+        })();
+        /* save-transfer:end */
+
         // Utility functions
         function randomInt(min, max) {
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
+        // Set just before a device move writes its saves. From then on nothing in
+        // this page may save, or a pending save (or the one that runs when the
+        // page hides for the restart) would put the old progress back.
+        let savesFrozen = false;
+
         // Keep the original save namespace so existing players retain their progress.
         function store(key, val) {
+            if (savesFrozen) return;
             try { localStorage.setItem('mathblaster_' + key, JSON.stringify(val)); }
             catch(e) { /* localStorage full — game continues */ }
         }
@@ -6048,45 +6992,148 @@
             triggerCelebrationDance('levelup');
         }
 
-        function showModal(id) { document.getElementById(id).classList.add('show'); }
+        // Dialog focus stays inside the visible overlay and returns to its opener.
+        const dialogStack = [];
+        const dialogReturnFocus = new WeakMap();
+        const dialogNames = { themePicker: 'Choose a theme', mysteryBoxModal: 'Mystery box', bossBattleModal: 'Boss battle', achievementsModal: 'Achievements', masteryModal: 'Fact Mastery Wall', shopModal: 'Shop', strategyOverlay: 'Math strategy' };
+        document.querySelectorAll('.modal, .strategy-overlay').forEach(el => {
+            el.setAttribute('role', 'dialog');
+            el.setAttribute('aria-modal', 'true');
+            if (!el.hasAttribute('aria-labelledby')) el.setAttribute('aria-label', dialogNames[el.id] || 'Game menu');
+            el.setAttribute('aria-hidden', 'true');
+            el.tabIndex = -1;
+            el.inert = true;
+        });
+        function activeGameDialog() {
+            return [...dialogStack].reverse().find(el => el.classList.contains('show')) || null;
+        }
+        function dialogFocusable(el) {
+            return [...el.querySelectorAll('button, [href], input, select, textarea, [tabindex]')].filter(node =>
+                !node.disabled && node.tabIndex >= 0 && !node.closest('[inert]') && node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden' && getComputedStyle(node).opacity !== '0');
+        }
+        function syncDialogAccess() {
+            const active = activeGameDialog();
+            document.querySelectorAll('.modal, .strategy-overlay').forEach(el => {
+                el.inert = el !== active;
+                el.setAttribute('aria-hidden', el === active ? 'false' : 'true');
+            });
+            const game = document.querySelector('.game-container');
+            game.inert = !!active;
+            if (active) game.setAttribute('aria-hidden', 'true');
+            else game.removeAttribute('aria-hidden');
+        }
+        function focusGameDialog(el) {
+            if (activeGameDialog() !== el) return;
+            (dialogFocusable(el)[0] || el).focus({ preventScroll: true });
+        }
+        function showModal(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (!el.classList.contains('show')) dialogReturnFocus.set(el, document.activeElement);
+            const oldIndex = dialogStack.indexOf(el);
+            if (oldIndex !== -1) dialogStack.splice(oldIndex, 1);
+            dialogStack.push(el);
+            el.classList.remove('hiding');
+            el.classList.add('show');
+            syncDialogAccess();
+            requestAnimationFrame(() => focusGameDialog(el));
+        }
         function hideModal(id) {
             const el = document.getElementById(id);
-            if (!el.classList.contains('show')) return;
+            if (!el || !el.classList.contains('show')) return;
+            const wasActive = activeGameDialog() === el;
             el.classList.add('hiding');
             el.classList.remove('show');
+            const index = dialogStack.indexOf(el);
+            if (index !== -1) dialogStack.splice(index, 1);
+            syncDialogAccess();
+            if (wasActive) {
+                const previous = dialogReturnFocus.get(el);
+                const active = activeGameDialog();
+                if (previous && previous.isConnected && !previous.closest('[inert]') && previous.getClientRects().length && (!active || active.contains(previous))) previous.focus({ preventScroll: true });
+                else if (active) focusGameDialog(active);
+                else document.getElementById('soundBtn').focus({ preventScroll: true });
+            }
             setTimeout(() => el.classList.remove('hiding'), 200);
         }
+        document.addEventListener('keydown', e => {
+            const dialog = activeGameDialog();
+            if (!dialog) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (dialog.id === 'strategyOverlay') dismissStrategyHint();
+                else if (dialog.id === 'masteryModal') hideMasteryWall();
+                else if (dialog.id === 'shopModal') closeShopModal();
+                else if (dialog.id === 'themePicker') hideThemePicker();
+                else if (dialog.id === 'achievementsModal') hideAchievements();
+                else if (dialog.id === 'transferModal') closeTransferSheet();
+                else if (dialog.id === 'mysteryBoxModal') {
+                    const close = document.getElementById('mysteryCloseBtn');
+                    if (!close.classList.contains('hidden') && !close.disabled) close.click();
+                }
+                return;
+            }
+            if (e.key !== 'Tab') return;
+            const items = dialogFocusable(dialog);
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (!first) { e.preventDefault(); dialog.focus(); }
+            else if (!dialog.contains(document.activeElement) || document.activeElement === dialog || (e.shiftKey && document.activeElement === first) || (!e.shiftKey && document.activeElement === last)) {
+                e.preventDefault();
+                (e.shiftKey ? last : first).focus();
+            }
+        }, true);
+        document.addEventListener('focusin', e => {
+            const dialog = activeGameDialog();
+            if (dialog && !dialog.contains(e.target)) focusGameDialog(dialog);
+        });
 
 
-        let toastTimeout = null;
+        const celebrationQueue = [];
+        let celebrationActive = false;
 
-        function showToast(message, duration = 2500) {
+        function queueCelebration(message, duration, streakCount = null) {
+            if (celebrationQueue.some(item => item.message === message)) return;
+            celebrationQueue.push({ message, duration, streakCount });
+            playNextCelebration();
+        }
+
+        function positionCelebration() {
+            const toast = document.getElementById('achievementToast');
+            const header = document.querySelector('.menu-modal.show .menu-header');
+            if (header) toast.style.top = `${header.getBoundingClientRect().bottom + 10}px`;
+            else toast.style.removeProperty('top');
+        }
+        const celebrationPositionObserver = new MutationObserver(positionCelebration);
+        document.querySelectorAll('.menu-modal').forEach(menu => {
+            celebrationPositionObserver.observe(menu, { attributes: true, attributeFilter: ['class'] });
+        });
+
+        function playNextCelebration() {
+            if (celebrationActive || !celebrationQueue.length) return;
             const toast = document.getElementById('achievementToast');
             if (!toast) return;
-            if (toastTimeout) clearTimeout(toastTimeout);
-
-            // Force-reset animation for rapid re-triggers
+            celebrationActive = true;
+            const item = celebrationQueue.shift();
             toast.classList.remove('show');
-            toast.style.removeProperty('--toast-dur');
-            void toast.offsetWidth; // reflow
-
-            toast.textContent = message;
-            toast.style.setProperty('--toast-dur', duration + 'ms');
+            toast.classList.toggle('celebration-streak', item.streakCount !== null);
+            if (item.streakCount !== null) {
+                toast.innerHTML = `<svg style="width:20px;height:20px;flex-shrink:0" aria-hidden="true"><use href="#pixel-fire"/></svg><span>${item.streakCount} STREAK</span>`;
+            } else toast.textContent = item.message;
+            positionCelebration();
+            toast.style.setProperty('--toast-dur', item.duration + 'ms');
+            void toast.offsetWidth;
             toast.classList.add('show');
-
-            // Primary dismiss: CSS animationend
-            const onEnd = () => {
+            setTimeout(() => {
                 toast.classList.remove('show');
-                toast.removeEventListener('animationend', onEnd);
-            };
-            toast.addEventListener('animationend', onEnd, { once: true });
+                celebrationActive = false;
+                playNextCelebration();
+            }, item.duration + 100);
+        }
 
-            // Backup dismiss via setTimeout
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-                toast.removeEventListener('animationend', onEnd);
-                toastTimeout = null;
-            }, duration + 500);
+        function showToast(message, duration = 2500) {
+            queueCelebration(message, duration);
         }
 
         function isItemUnlocked(collection, id) {
@@ -6098,6 +7145,8 @@
             return BOSSES.filter(b => playerLevel >= b.unlockLevel);
         }
 
+        const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        reducedMotionQuery.addEventListener('change', () => applyWeatherOverlay(load('theme', 'tropical')));
         let _shootingStarsInterval = null;
         function applyWeatherOverlay(themeId) {
             if (_shootingStarsInterval) { clearTimeout(_shootingStarsInterval); _shootingStarsInterval = null; }
@@ -6107,7 +7156,7 @@
             overlay.innerHTML = '';
             overlay.style.background = '';
             const theme = THEMES.find(t => t.id === themeId);
-            if (!theme || !theme.weather) return;
+            if (!theme || !theme.weather || reducedMotionQuery.matches) return;
 
             const w = theme.weather;
             overlay.className = 'weather-' + w;
@@ -6193,25 +7242,29 @@
         }
 
         function showThemePicker() {
-            const container = document.getElementById('themeButtons');
-            if (container) {
-                container.innerHTML = THEMES.map(t => {
-                    const unlocked = playerLevel >= t.unlockLevel;
-                    const lockIcon = unlocked ? '' : ` 🔒 Lv.${t.unlockLevel}`;
-                    return `<button class="theme-btn ${t.id} ${!unlocked ? 'locked' : ''}" onclick="setTheme('${t.id}')">${t.name}${lockIcon}</button>`;
-                }).join('');
-            }
-            // Scene buttons
-            const sceneContainer = document.getElementById('sceneButtons');
-            if (sceneContainer) {
-                sceneContainer.innerHTML = SCENE_VARIATIONS.map(s => {
-                    const unlocked = playerLevel >= s.unlockLevel;
-                    const active = currentSceneId === s.id;
-                    const lockIcon = unlocked ? '' : ` 🔒 Lv.${s.unlockLevel}`;
-                    return `<button class="theme-btn scene-btn ${!unlocked ? 'locked' : ''} ${active ? 'active' : ''}" onclick="setScene('${s.id}')">${s.emoji} ${s.name}${lockIcon}</button>`;
-                }).join('');
-            }
-            showModal('themePicker');
+            const savedTheme = load('theme', 'tropical');
+            const currentTheme = isItemUnlocked(THEMES, savedTheme) ? savedTheme : 'tropical';
+            const themeContainer = document.getElementById('themeButtons');
+            themeContainer.innerHTML = THEMES.map(t => {
+                const unlocked = playerLevel >= t.unlockLevel;
+                const active = currentTheme === t.id;
+                const name = t.name.replace(/^[^A-Za-z]+/, '');
+                return `<button class="theme-btn ${t.id} ${unlocked ? '' : 'locked'} ${active ? 'active' : ''}" aria-pressed="${active}" onclick="setTheme('${t.id}')">
+                    <span class="weather-preview ${t.id}" aria-hidden="true"></span>
+                    <span class="theme-card-label">${name}</span>
+                    <span class="theme-card-status">${active ? 'Selected' : unlocked ? 'Choose weather' : 'Unlocks at level ' + t.unlockLevel}</span>
+                </button>`;
+            }).join('');
+            document.getElementById('sceneButtons').innerHTML = SCENE_VARIATIONS.map(scene => {
+                const unlocked = playerLevel >= scene.unlockLevel;
+                const active = currentSceneId === scene.id;
+                return `<button class="theme-btn scene-btn ${unlocked ? '' : 'locked'} ${active ? 'active' : ''}" aria-pressed="${active}" onclick="setScene('${scene.id}')">
+                    <img class="scene-preview" src="assets/scene-previews/${scene.id}.png" alt="${scene.name}" loading="lazy" width="320" height="180">
+                    <span class="theme-card-label">${scene.name}</span>
+                    <span class="theme-card-status">${active ? 'Selected' : unlocked ? 'Choose scene' : 'Unlocks at level ' + scene.unlockLevel}</span>
+                </button>`;
+            }).join('');
+            if (!document.getElementById('themePicker').classList.contains('show')) showModal('themePicker');
         }
         function hideThemePicker() { hideModal('themePicker'); }
 
@@ -6223,6 +7276,7 @@
                 showToast(`🔒 Unlock ${scene.name} at Level ${scene.unlockLevel}!`, 2000);
                 return;
             }
+            if (currentSceneId === sceneId) return;
             currentSceneId = sceneId;
             store('scene', sceneId);
             // Track scene unlock
@@ -6254,6 +7308,7 @@
             const useEl = btn.querySelector('use');
             useEl.setAttribute('href', soundEnabled ? '#icon-sound-on' : '#icon-sound-off');
             btn.classList.toggle('muted', !soundEnabled);
+            btn.setAttribute('aria-pressed', String(soundEnabled));
             store('sound', soundEnabled);
         }
 
@@ -6263,6 +7318,7 @@
                 const btn = document.getElementById('soundBtn');
                 btn.querySelector('use').setAttribute('href', '#icon-sound-off');
                 btn.classList.add('muted');
+                btn.setAttribute('aria-pressed', 'false');
             }
         }
 
@@ -6565,27 +7621,42 @@
             }
         }
 
+        function achievementDescription(achievement) {
+            const [kind, amount] = achievement.id.split('_');
+            if (kind === 'streak') return `${amount} correct answers in a row`;
+            if (kind === 'score') return `Reach ${amount} coins`;
+            if (kind === 'level') return `Reach level ${amount}`;
+            if (kind === 'bosses') return `Defeat ${amount} bosses`;
+            return {
+                first_correct: 'Answer a question correctly', boss_slayer: 'Defeat your first boss',
+                speed_demon: 'Reach a 3x combo', collector: 'Open 3 mystery boxes',
+                powerup_user: 'Receive a helper boost', scene_all: 'Try every beach scene',
+                boss_unique_all: 'Defeat every kind of boss', theme_all: 'Try every weather',
+                sticker_10: 'Collect 10 different stickers', sticker_40: 'Collect 40 different stickers',
+                sticker_all: 'Complete your sticker collection'
+            }[achievement.id] || '';
+        }
+
         function showAchievements() {
             if (bossActive) return;
-            const grid = document.getElementById('achievementsGrid');
-            grid.innerHTML = ACHIEVEMENTS.map(a => {
-                const unlocked = unlockedAchievements.includes(a.id);
-                return `<div class="achievement-item ${unlocked ? 'unlocked' : 'locked'}">
-                    <span class="achievement-emoji">${unlocked ? a.emoji : '🔒'}</span>
-                    <span class="achievement-name">${a.name}</span>
-                </div>`;
-            }).join('');
+            const earned = ACHIEVEMENTS.filter(a => unlockedAchievements.includes(a.id));
+            const remaining = ACHIEVEMENTS.filter(a => !unlockedAchievements.includes(a.id));
+            document.getElementById('achievementSummary').textContent = `${earned.length} of ${ACHIEVEMENTS.length} earned`;
+            const section = (title, items, unlocked) => !items.length ? '' : `<section class="achievement-section"><h3>${title}</h3><div class="achievement-list">${items.map(a => `
+                <div class="achievement-item ${unlocked ? 'unlocked' : 'locked'}">
+                    <span class="achievement-emoji" aria-hidden="true">${unlocked ? a.emoji : '🔒'}</span>
+                    <div><span class="achievement-name">${a.name}</span>
+                    <span class="achievement-description">${achievementDescription(a)}</span>
+                    ${unlocked ? '<span class="achievement-earned">Earned</span>' : ''}</div>
+                </div>`).join('')}</div></section>`;
+            document.getElementById('achievementsGrid').innerHTML = section('Earned', earned, true) + section('Still to discover', remaining, false);
             showModal('achievementsModal');
         }
 
         function hideAchievements() { hideModal('achievementsModal'); }
 
         function showStreakCelebration(num) {
-            const el = document.getElementById('streakCelebration');
-            el.innerHTML = `<svg style="width:20px;height:20px;image-rendering:pixelated;flex-shrink:0;"><use href="#pixel-fire"/></svg><span>${num} STREAK</span>`;
-            el.classList.remove('show');
-            void el.offsetWidth;
-            el.classList.add('show');
+            queueCelebration(`${num} STREAK`, 1500, num);
             playSound('streak');
 
             // Trigger celebration dance for milestone streaks
@@ -6599,7 +7670,7 @@
             document.getElementById('mysteryText').textContent = 'Tap to open!';
             document.getElementById('mysteryCloseBtn').classList.add('hidden');
             document.getElementById('mysteryBox').style.display = 'block';
-            document.getElementById('mysteryBoxModal').classList.add('show');
+            showModal('mysteryBoxModal');
             playSound('bonus');
         }
 
@@ -6623,7 +7694,7 @@
 
                 // Show sticker with reveal animation
                 let stickerHTML = `
-                    <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;">
+                    <div class="reward-sticker" style="position:relative;display:flex;flex-direction:column;align-items:center;">
                         <div class="sticker-reveal" style="position:relative;">
                             <svg style="width:80px;height:80px;image-rendering:pixelated;"><use href="#${sticker.svgId}"/></svg>
                 `;
@@ -6642,7 +7713,7 @@
 
                 stickerHTML += `
                         </div>
-                        <div style="font-size:1.2rem;font-weight:bold;color:var(--primary);">${sticker.name}</div>
+                        <div class="reward-name">${sticker.name}</div>
                         <span class="rarity-badge ${rarity.cssClass}">${rarity.name}</span>
                     </div>
                 `;
@@ -6652,7 +7723,7 @@
                     // Already have this sticker - give coins instead
                     const coinBonus = 2 + Math.floor(Math.random() * 4); // 2-5 coins
                     document.getElementById('mysteryText').innerHTML = `
-                        <div style="color:#888;">Already collected!</div>
+                        <div>Already collected!</div>
                         <div style="color:var(--accent);margin-top:5px;">+${coinBonus} <svg class="pixel-coin" style="width:16px;height:16px;vertical-align:middle;"><use href="#pixel-coin"/></svg></div>
                     `;
                     setTimeout(() => {
@@ -7331,7 +8402,6 @@
         // ==========================================
         // SINGAPORE MATH STRATEGY HINTS
         // ==========================================
-        let strategyTimeout = null;
         let strategyPromptTimeout = null;
         const STRATEGY_MIN_VIEW_MS = 5000;
         let showingStrategy = false;
@@ -7527,38 +8597,31 @@
             document.getElementById('strategyAnswer').textContent = `= ${answer}`;
 
             const overlay = document.getElementById('strategyOverlay');
+            const continueButton = document.getElementById('strategyContinue');
             overlay.classList.remove('dismissible');
-            overlay.classList.add('show');
+            continueButton.disabled = true;
+            showModal('strategyOverlay');
             if (strategyPromptTimeout) clearTimeout(strategyPromptTimeout);
             strategyPromptTimeout = setTimeout(() => {
                 strategyPromptTimeout = null;
-                if (showingStrategy) overlay.classList.add('dismissible');
+                if (showingStrategy) {
+                    overlay.classList.add('dismissible');
+                    continueButton.disabled = false;
+                }
             }, STRATEGY_MIN_VIEW_MS);
-
-            // Auto-dismiss after 15 seconds so kids don't get stuck
-            if (strategyTimeout) clearTimeout(strategyTimeout);
-            strategyTimeout = setTimeout(() => dismissStrategyHint(true), 15000);
         }
 
-        // Dismiss strategy hint (minimum 5 seconds before tap can dismiss)
+        // A child can continue after reading for at least five seconds.
         function dismissStrategyHint(force) {
             if (!showingStrategy) return;
-
-            // Don't allow tap dismiss for first 5 seconds (unless forced by timeout)
             if (!force && (Date.now() - lastStrategyTime) < STRATEGY_MIN_VIEW_MS) return;
-
             showingStrategy = false;
-            if (strategyTimeout) {
-                clearTimeout(strategyTimeout);
-                strategyTimeout = null;
-            }
             if (strategyPromptTimeout) {
                 clearTimeout(strategyPromptTimeout);
                 strategyPromptTimeout = null;
             }
-            document.getElementById('strategyOverlay').classList.remove('show', 'dismissible');
-
-            // Continue to next problem (only if game is still active)
+            hideModal('strategyOverlay');
+            document.getElementById('strategyOverlay').classList.remove('dismissible');
             if (gameActive) {
                 if (problemTimeout) clearTimeout(problemTimeout);
                 problemTimeout = setTimeout(generateProblem, 200);
@@ -8108,7 +9171,6 @@
             // Clear any pending timeouts/intervals to prevent memory leaks
             if (comboTimeout) clearTimeout(comboTimeout);
             if (danceTimeout) clearTimeout(danceTimeout);
-            if (strategyTimeout) clearTimeout(strategyTimeout);
             if (problemTimeout) clearTimeout(problemTimeout);
             if (bossInterval) clearInterval(bossInterval);
             if (bossEntranceTimeout) { clearTimeout(bossEntranceTimeout); bossEntranceTimeout = null; }
@@ -8173,7 +9235,10 @@
         }
 
         document.addEventListener('keydown', function(e) {
-            if (showingStrategy) return;
+            if (e.defaultPrevented || showingStrategy) return;
+            const openDialog = activeGameDialog();
+            if (openDialog && (openDialog.id !== 'bossBattleModal' || !bossActive)) return;
+            if (e.key === 'Enter' && e.target.closest('button, [role="button"]')) return;
             if (bossActive) {
                 if (e.key >= '0' && e.key <= '9') bossNumPress(e.key);
                 else if (e.key === 'Backspace') { e.preventDefault(); bossDeletePress(); }
@@ -8206,6 +9271,11 @@
             saveCoins();
             purchasedCostumes.push(id);
             savePurchasedCostumes();
+            const type = COSTUMES.hats.some(item => item.id === id) ? 'hat' :
+                COSTUMES.outfits.some(item => item.id === id) ? 'outfit' : 'accessory';
+            equippedCostumes[type] = id;
+            saveCostumes();
+            updateCostumeDisplay();
             document.getElementById('shopCoinCount').textContent = score;
             $score.textContent = score;
             renderShopGrid();
@@ -8274,17 +9344,52 @@
             renderMasteryGrid();
         }
 
+        function showMasteryFact(cell, fact, equation, level, revealDetail = false) {
+            document.querySelectorAll('#masteryGrid button').forEach(button => {
+                const selected = button === cell;
+                button.tabIndex = selected ? 0 : -1;
+                button.setAttribute('aria-pressed', String(selected));
+            });
+            const detail = document.getElementById('masteryDetail');
+            const label = { new: 'New', learning: 'Learning', bronze: 'Bronze', silver: 'Silver', gold: 'Gold' }[level];
+            const attempts = fact.attempts || 0;
+            const correct = fact.correctCount || 0;
+            const timing = fact.avgMs ? `<p>Average answer time: ${(fact.avgMs / 1000).toFixed(1)} seconds</p>` : '';
+            detail.innerHTML = `<p class="mastery-detail-equation">${equation} = ${fact.answer}</p><p class="mastery-detail-status">${label}</p><p>${attempts ? `${correct} correct out of ${attempts} tries` : 'Ready to practice'}</p>${timing}`;
+            if (revealDetail) detail.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+        }
+
+        document.getElementById('masteryGrid').addEventListener('keydown', e => {
+            const cell = e.target.closest('button.mastery-cell');
+            if (!cell) return;
+            const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -12, ArrowDown: 12 };
+            const buttons = [...e.currentTarget.querySelectorAll('button.mastery-cell')];
+            let target = null;
+            if (e.key === 'Home') target = buttons[0];
+            else if (e.key === 'End') target = buttons[buttons.length - 1];
+            else if (moves[e.key]) {
+                let position = Number(cell.dataset.position) + moves[e.key];
+                while (position >= 0 && position < 144 && !target) {
+                    target = e.currentTarget.querySelector(`button[data-position="${position}"]`);
+                    position += moves[e.key];
+                }
+            } else return;
+            e.preventDefault();
+            if (target) { target.focus(); target.click(); }
+        });
+
         function renderMasteryGrid() {
             const grid = document.getElementById('masteryGrid');
             const summary = document.getElementById('masterySummary');
             if (!grid) return;
 
             const facts = mathFacts.filter(f => f.op === currentMasteryOp);
-            // 12×12 keeps cell sizes phone-friendly and skips the trivial ×0/+0 row & column.
+            // Keep the overview mosaic; each available fact has a readable detail view.
             const sym = OP_SYMBOLS[currentMasteryOp];
             const cols = 12;
             grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
             grid.innerHTML = '';
+            document.getElementById('masteryDetail').innerHTML = '<p>Tap a fact for a closer look.</p>';
 
             const factById = {};
             facts.forEach(f => { factById[f.id] = f; });
@@ -8294,7 +9399,7 @@
             const isSubtract = currentMasteryOp === 'subtract';
             for (let a = 1; a <= 12; a++) {
                 for (let b = 1; b <= 12; b++) {
-                    const cell = document.createElement('div');
+                    let cell = document.createElement('div');
                     // Subtraction: hide impossible cells (a < b) so the grid renders as a triangle.
                     if (isSubtract && a < b) {
                         cell.className = 'mastery-cell';
@@ -8306,16 +9411,26 @@
                     if (!fact) {
                         cell.className = 'mastery-cell lv-new';
                         cell.style.opacity = '0.25';
-                        cell.innerHTML = `<span class="mc-num">${a}${sym}${b}</span>`;
+                        cell.innerHTML = `<span class="mc-num">${currentMasteryOp === 'divide' ? a * b : a}${sym}${b}</span>`;
                     } else {
+                        cell = document.createElement('button');
+                        cell.type = 'button';
+                        cell.tabIndex = grid.querySelector('button') ? -1 : 0;
+                        cell.dataset.position = (a - 1) * 12 + b - 1;
+                        cell.setAttribute('aria-pressed', 'false');
                         const lvl = masteryLevel(fact);
                         counts[lvl]++;
                         cell.className = `mastery-cell lv-${lvl}`;
                         const ms = fact.avgMs;
                         const timeStr = (lvl === 'new' || lvl === 'learning' || !ms) ? '' :
                             `<span class="mc-time">${(ms / 1000).toFixed(1)}s</span>`;
-                        cell.innerHTML = `<span class="mc-num">${a}${sym}${b}</span>${timeStr}`;
-                        cell.title = `${a} ${sym} ${b} = ${fact.answer} · ${fact.correctCount || 0}/${fact.attempts || 0} correct${ms ? ` · avg ${(ms/1000).toFixed(1)}s` : ''}`;
+                        const left = currentMasteryOp === 'divide' ? fact.num1 : a;
+                        const right = currentMasteryOp === 'divide' ? fact.num2 : b;
+                        const equation = `${left} ${sym} ${right}`;
+                        cell.innerHTML = `<span class="mc-num">${left}${sym}${right}</span>${timeStr}`;
+                        cell.setAttribute('aria-label', `${equation}, ${lvl}. Show progress`);
+                        cell.title = `${equation} = ${fact.answer}`;
+                        cell.addEventListener('click', e => showMasteryFact(cell, fact, equation, lvl, e.detail > 0));
                     }
                     grid.appendChild(cell);
                 }
@@ -8335,312 +9450,187 @@
             renderShopGrid();
         }
 
+        function createShopCard(item, onActivate) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.dataset.shopId = item.id;
+            card.className = 'modal-item' + (item.equipped ? ' equipped' : '') + (!item.owned && score < item.price ? ' locked' : '');
+            const state = item.equipped ? 'Equipped' : item.owned ? 'Owned' : `${item.price} coins`;
+            card.setAttribute('aria-label', `${item.name}, ${state}`);
+            card.setAttribute('aria-pressed', String(!!item.equipped));
+            const icon = item.iconHTML || `<svg aria-hidden="true"><use href="#${item.svgId || 'icon-none'}"/></svg>`;
+            const rarity = item.rarity ? RARITY[item.rarity] : null;
+            const status = item.equipped
+                ? '<svg aria-hidden="true"><use href="#icon-checkmark"/></svg> Equipped'
+                : item.owned ? 'Owned'
+                : `<svg aria-hidden="true"><use href="#pixel-coin"/></svg> ${item.price}`;
+            card.innerHTML = `<span class="modal-item-icon">${icon}</span>
+                <span class="modal-item-name">${item.name}</span>
+                ${rarity ? `<span class="rarity-badge ${rarity.cssClass}">${rarity.name}</span>` : ''}
+                <span class="modal-item-info">${status}</span>`;
+            card.onclick = () => {
+                onActivate(card);
+                const replacement = document.querySelector(`#shopGrid [data-shop-id="${item.id}"]`);
+                if (replacement) replacement.focus({ preventScroll: true });
+            };
+            return card;
+        }
+
+        function showShopPriceHint(card, price) {
+            card.classList.add('shake');
+            setTimeout(() => card.classList.remove('shake'), 300);
+            showToast(`Need ${price - score} more coins!`, 2000);
+            playSound('wrong');
+            haptic('error');
+        }
+
+        let shopDancePreviewTimeout = null;
+        function previewShopDance(dance) {
+            const character = document.getElementById('shopCharacter');
+            if (!character) return;
+            if (shopDancePreviewTimeout) clearTimeout(shopDancePreviewTimeout);
+            DANCE_TYPES.forEach(name => character.classList.remove(name));
+            void character.offsetWidth;
+            character.classList.add(dance.cssClass);
+            shopDancePreviewTimeout = setTimeout(() => {
+                character.classList.remove(dance.cssClass);
+                shopDancePreviewTimeout = null;
+            }, 2500);
+        }
+
+        function renderStickerBook(grid) {
+            grid.className = 'sticker-book';
+            const categories = [
+                ['fruits', 'Fruit'], ['animals', 'Animals'], ['vibes', 'Island Life'],
+                ['bosses', 'Bosses'], ['special', 'Special']
+            ];
+            categories.forEach(([category, label]) => {
+                const stickers = STICKERS.filter(sticker => sticker.category === category);
+                const collected = stickers.filter(sticker => hasStickerCollected(sticker.id));
+                const missing = stickers.filter(sticker => !hasStickerCollected(sticker.id));
+                const section = document.createElement('section');
+                section.className = 'sticker-section';
+                const heading = document.createElement('h3');
+                heading.innerHTML = `${label}<span>${collected.length} / ${stickers.length}</span>`;
+                section.appendChild(heading);
+                const collectedGrid = document.createElement('div');
+                collectedGrid.className = 'sticker-category-grid';
+                collected.forEach(sticker => {
+                    const rarity = STICKER_RARITY[sticker.rarity];
+                    const card = document.createElement('button');
+                    card.type = 'button';
+                    card.className = `sticker-item collected ${rarity.cssClass}`;
+                    card.setAttribute('aria-label', `${sticker.name}, ${rarity.name} sticker`);
+                    card.innerHTML = `<svg aria-hidden="true"><use href="#${sticker.svgId}"/></svg><span class="sticker-item-name">${sticker.name}</span>`;
+                    card.onclick = () => showToast(`${sticker.name} - ${rarity.name}`, 1500);
+                    collectedGrid.appendChild(card);
+                });
+                if (collected.length) section.appendChild(collectedGrid);
+                else {
+                    const empty = document.createElement('p');
+                    empty.className = 'sticker-empty';
+                    empty.textContent = 'Your first one is still to come.';
+                    section.appendChild(empty);
+                }
+                if (missing.length) {
+                    const details = document.createElement('details');
+                    details.className = 'sticker-missing';
+                    const summary = document.createElement('summary');
+                    summary.textContent = `Still to find · ${missing.length}`;
+                    details.appendChild(summary);
+                    const missingGrid = document.createElement('div');
+                    missingGrid.className = 'sticker-category-grid';
+                    missing.forEach(sticker => {
+                        const card = document.createElement('div');
+                        card.className = 'sticker-item uncollected';
+                        card.innerHTML = `<svg aria-hidden="true"><use href="#${sticker.svgId}"/></svg><span class="sticker-item-name">Not found</span>`;
+                        missingGrid.appendChild(card);
+                    });
+                    details.appendChild(missingGrid);
+                    section.appendChild(details);
+                }
+                grid.appendChild(section);
+            });
+        }
+
         function renderShopGrid() {
             const grid = document.getElementById('shopGrid');
-
-            // Reset grid class (stickers tab uses sticker-grid)
             grid.className = 'modal-grid';
-
-            // Handle avatar tab
-            if (currentCostumeTab === 'avatars') {
-                updateCostumePreview();
-                grid.innerHTML = '';
-                Object.values(AVATARS).forEach(avatar => {
-                    const isSelected = selectedAvatar === avatar.id;
-                    const div = document.createElement('div');
-                    div.className = 'modal-item' + (isSelected ? ' equipped' : '');
-                    div.innerHTML = `
-                        <span class="modal-item-icon"><svg style="width:36px;height:36px;"><use href="#${avatar.svgId}"/></svg></span>
-                        <span class="modal-item-name">${avatar.name}</span>
-                    `;
-                    div.onclick = () => selectAvatar(avatar.id);
-                    grid.appendChild(div);
-                });
-                return;
-            }
-
-            // Handle dances tab
-            if (currentCostumeTab === 'dances') {
-                updateCostumePreview();
-                grid.innerHTML = '';
-                DANCE_MOVES.forEach(dance => {
-                    const isOwned = ownedDances.includes(dance.id);
-                    const canAfford = score >= dance.price;
-                    const rarity = RARITY[dance.rarity];
-                    const div = document.createElement('div');
-                    div.className = 'modal-item' + (isOwned && equippedDance === dance.id ? ' equipped' : '') + (!isOwned && !canAfford ? ' locked' : '');
-
-                    // Dance SVG icons
-                    const danceIconIds = {
-                        'dance-wiggle': 'dance-wiggle-icon',
-                        'dance-spin': 'dance-spin-icon',
-                        'dance-bounce': 'dance-bounce-icon',
-                        'dance-victory': 'dance-victory-icon'
-                    };
-
-                    let infoText = '';
-                    if (isOwned) {
-                        infoText = '<svg style="width:12px;height:12px;vertical-align:middle;"><use href="#icon-checkmark"/></svg> Owned';
-                    } else {
-                        infoText = dance.price === 0 ? 'FREE' : `<svg style="width:12px;height:12px;vertical-align:middle;"><use href="#pixel-coin"/></svg> ${dance.price}`;
-                    }
-
-                    div.innerHTML = `
-                        <span class="modal-item-icon"><svg style="width:32px;height:32px;image-rendering:pixelated;"><use href="#${danceIconIds[dance.id] || 'dance-wiggle-icon'}"/></svg></span>
-                        <span class="modal-item-name">${dance.name}</span>
-                        <span class="rarity-badge ${rarity.cssClass}">${rarity.name}</span>
-                        <span class="modal-item-info" style="color:${isOwned ? 'var(--accent)' : (canAfford ? '#ffd93d' : '#888')}">${infoText}</span>
-                    `;
-
-                    if (!isOwned && canAfford) {
-                        div.onclick = () => {
-                            if (purchaseDance(dance.id)) {
-                                playSound('purchase');
-                                haptic('success');
-                                equippedDance = dance.id;
-                                saveEquippedDance();
-                                document.getElementById('shopCoinCount').textContent = score;
-                                renderShopGrid();
-                                triggerCelebrationDance('achievement');
-                            }
-                        };
-                    } else if (!isOwned && !canAfford) {
-                        div.onclick = () => {
-                            const needed = dance.price - score;
-                            div.classList.add('shake');
-                            setTimeout(() => div.classList.remove('shake'), 300);
-                            showToast(`Need ${needed} more coins!`, 2000);
-                            playSound('wrong');
-                            haptic('error');
-                        };
-                    } else {
-                        // Already owned - select and preview the dance
-                        div.onclick = () => {
-                            equippedDance = dance.id;
-                            saveEquippedDance();
-                            renderShopGrid();
-                            const avatar = document.getElementById('mangoAvatar');
-                            if (avatar) {
-                                DANCE_TYPES.forEach(d => avatar.classList.remove(d));
-                                avatar.classList.add(dance.cssClass);
-                                setTimeout(() => avatar.classList.remove(dance.cssClass), 2000);
-                            }
-                        };
-                    }
-                    grid.appendChild(div);
-                });
-                return;
-            }
-
-            // Handle pets tab
-            if (currentCostumeTab === 'pets') {
-                updateCostumePreview();
-                grid.innerHTML = '';
-                PETS.forEach(pet => {
-                    const isOwned = ownedPets.includes(pet.id);
-                    const isEquipped = equippedPet === pet.id;
-                    const canAfford = score >= pet.price;
-                    const rarity = RARITY[pet.rarity];
-                    const div = document.createElement('div');
-                    div.className = 'modal-item' + (isEquipped ? ' equipped' : '') + (!isOwned && !canAfford ? ' locked' : '');
-                    const iconHTML = pet.svgId
-                        ? `<svg style="width:32px;height:32px;image-rendering:pixelated;"><use href="#${pet.svgId}"/></svg>`
-                        : `<svg style="width:32px;height:32px;image-rendering:pixelated;"><use href="#icon-none"/></svg>`;
-                    let infoText;
-                    if (isOwned) {
-                        infoText = isEquipped
-                            ? '<svg style="width:12px;height:12px;vertical-align:middle;"><use href="#icon-checkmark"/></svg> Equipped'
-                            : 'Owned';
-                    } else {
-                        infoText = `<svg style="width:12px;height:12px;vertical-align:middle;"><use href="#pixel-coin"/></svg> ${pet.price}`;
-                    }
-                    div.innerHTML = `
-                        <span class="modal-item-icon">${iconHTML}</span>
-                        <span class="modal-item-name">${pet.name}</span>
-                        <span class="rarity-badge ${rarity.cssClass}">${rarity.name}</span>
-                        <span class="modal-item-info" style="color:${isOwned ? 'var(--accent)' : (canAfford ? '#ffd93d' : '#888')}">${infoText}</span>
-                    `;
-                    if (isOwned) {
-                        div.onclick = () => {
-                            equippedPet = pet.id;
-                            saveEquippedPet();
-                            updatePetDisplay();
-                            triggerPetReaction('correct');
-                            renderShopGrid();
-                            playSound('tap');
-                        };
-                    } else if (canAfford) {
-                        div.onclick = () => {
-                            if (purchasePet(pet.id)) {
-                                playSound('purchase');
-                                haptic('success');
-                                equippedPet = pet.id;
-                                saveEquippedPet();
-                                updatePetDisplay();
-                                document.getElementById('shopCoinCount').textContent = score;
-                                renderShopGrid();
-                            }
-                        };
-                    } else {
-                        div.onclick = () => {
-                            const needed = pet.price - score;
-                            div.classList.add('shake');
-                            setTimeout(() => div.classList.remove('shake'), 300);
-                            showToast(`Need ${needed} more coins!`, 2000);
-                            playSound('wrong');
-                            haptic('error');
-                        };
-                    }
-                    grid.appendChild(div);
-                });
-                return;
-            }
-
-            // Handle trails tab
-            if (currentCostumeTab === 'trails') {
-                updateCostumePreview();
-                grid.innerHTML = '';
-                TRAILS.forEach(trail => {
-                    const isOwned = ownedTrails.includes(trail.id);
-                    const isEquipped = equippedTrail === trail.id;
-                    const canAfford = score >= trail.price;
-                    const rarity = RARITY[trail.rarity];
-                    const div = document.createElement('div');
-                    div.className = 'modal-item' + (isEquipped ? ' equipped' : '') + (!isOwned && !canAfford ? ' locked' : '');
-                    const iconHTML = trail.symbol
-                        ? `<span class="modal-item-icon" style="color:${trail.color};"><svg style="width:32px;height:32px;image-rendering:pixelated;"><use href="#${trail.symbol}"/></svg></span>`
-                        : `<span class="modal-item-icon"><svg style="width:32px;height:32px;image-rendering:pixelated;"><use href="#icon-none"/></svg></span>`;
-                    let infoText;
-                    if (isOwned) {
-                        infoText = isEquipped
-                            ? '<svg style="width:12px;height:12px;vertical-align:middle;"><use href="#icon-checkmark"/></svg> Equipped'
-                            : 'Owned';
-                    } else {
-                        infoText = `<svg style="width:12px;height:12px;vertical-align:middle;"><use href="#pixel-coin"/></svg> ${trail.price}`;
-                    }
-                    div.innerHTML = `
-                        ${iconHTML}
-                        <span class="modal-item-name">${trail.name}</span>
-                        <span class="rarity-badge ${rarity.cssClass}">${rarity.name}</span>
-                        <span class="modal-item-info" style="color:${isOwned ? 'var(--accent)' : (canAfford ? '#ffd93d' : '#888')}">${infoText}</span>
-                    `;
-                    if (isOwned) {
-                        div.onclick = () => {
-                            equippedTrail = trail.id;
-                            saveEquippedTrail();
-                            renderShopGrid();
-                            playSound('tap');
-                            spawnAnswerTrail(); // preview burst
-                        };
-                    } else if (canAfford) {
-                        div.onclick = () => {
-                            if (purchaseTrail(trail.id)) {
-                                playSound('purchase');
-                                haptic('success');
-                                equippedTrail = trail.id;
-                                saveEquippedTrail();
-                                document.getElementById('shopCoinCount').textContent = score;
-                                renderShopGrid();
-                                spawnAnswerTrail();
-                            }
-                        };
-                    } else {
-                        div.onclick = () => {
-                            const needed = trail.price - score;
-                            div.classList.add('shake');
-                            setTimeout(() => div.classList.remove('shake'), 300);
-                            showToast(`Need ${needed} more coins!`, 2000);
-                            playSound('wrong');
-                            haptic('error');
-                        };
-                    }
-                    grid.appendChild(div);
-                });
-                return;
-            }
-
-            // Handle stickers tab - Sticker Book!
-            if (currentCostumeTab === 'stickers') {
-                const preview = document.getElementById('costumePreview');
-                const collected = getStickerCount();
-                preview.innerHTML = `<div class="sticker-counter">${collected} / ${STICKERS.length} Collected</div>`;
-
-                grid.innerHTML = '';
-                grid.className = 'sticker-grid';
-
-                // Group stickers by category for display
-                const categories = ['fruits', 'animals', 'vibes', 'bosses', 'special'];
-
-                categories.forEach(category => {
-                    const categoryStickers = STICKERS.filter(s => s.category === category);
-                    categoryStickers.forEach(sticker => {
-                        const isCollected = hasStickerCollected(sticker.id);
-                        const rarity = STICKER_RARITY[sticker.rarity];
-                        const div = document.createElement('div');
-                        div.className = `sticker-item ${isCollected ? 'collected' : 'uncollected'} ${rarity.cssClass}`;
-
-                        div.innerHTML = `
-                            <svg style="width:32px;height:32px;image-rendering:pixelated;"><use href="#${sticker.svgId}"/></svg>
-                            <span class="sticker-item-name">${isCollected ? sticker.name : '???'}</span>
-                        `;
-
-                        if (isCollected) {
-                            div.onclick = () => {
-                                showToast(`${sticker.name} - ${rarity.name}`, 1500);
-                            };
-                        }
-                        grid.appendChild(div);
-                    });
-                });
-                return;
-            }
-
-            const items = COSTUMES[currentCostumeTab] || [];
-            const equippedKey = currentCostumeTab === 'hats' ? 'hat' :
-                               currentCostumeTab === 'outfits' ? 'outfit' : 'accessory';
-
             grid.innerHTML = '';
-            items.forEach(item => {
-                const isOwned = isCostumeUnlocked(item);
-                const isEquipped = equippedCostumes[equippedKey] === item.id;
-                const canAfford = score >= item.price;
-                const div = document.createElement('div');
-                div.className = 'modal-item' + (isEquipped ? ' equipped' : '') + (!isOwned && !canAfford ? ' locked' : '');
+            updateCostumePreview();
 
-                // Use SVG preview for costumes with svgId, or "None" icon
-                const iconHTML = item.svgId ?
-                    `<svg style="width:32px;height:32px;image-rendering:pixelated;"><use href="#${item.svgId}"/></svg>` :
-                    `<svg style="width:32px;height:32px;image-rendering:pixelated;"><use href="#icon-none"/></svg>`;
-
-                let infoText = '';
-                if (isOwned) {
-                    if (isEquipped) infoText = '<svg style="width:12px;height:12px;vertical-align:middle;"><use href="#icon-checkmark"/></svg> Equipped';
-                } else {
-                    infoText = `<svg style="width:12px;height:12px;vertical-align:middle;"><use href="#pixel-coin"/></svg> ${item.price}`;
-                }
-
-                div.innerHTML = `
-                    <span class="modal-item-icon">${iconHTML}</span>
-                    <span class="modal-item-name">${item.name}</span>
-                    <span class="modal-item-info" style="color:${isOwned ? 'var(--accent)' : (canAfford ? '#ffd93d' : '#888')}">${infoText}</span>
-                `;
-
-                if (isOwned) {
-                    div.onclick = () => equipCostume(equippedKey, item.id);
-                } else if (canAfford) {
-                    div.onclick = () => buyCostume(item.id, item.price);
-                } else {
-                    // Feedback for locked items - show how many more coins needed
-                    div.onclick = () => {
-                        const needed = item.price - score;
-                        div.classList.add('shake');
-                        setTimeout(() => div.classList.remove('shake'), 300);
-                        showToast(`Need ${needed} more coins!`, 2000);
-                        playSound('wrong');
-                        haptic('error');
-                    };
-                }
-                grid.appendChild(div);
+            if (currentCostumeTab === 'stickers') {
+                renderStickerBook(grid);
+                return;
+            }
+            if (currentCostumeTab === 'avatars') {
+                Object.values(AVATARS).forEach(avatar => {
+                    grid.appendChild(createShopCard({ ...avatar, owned: true, equipped: selectedAvatar === avatar.id }, () => selectAvatar(avatar.id)));
+                });
+                return;
+            }
+            if (currentCostumeTab === 'dances') {
+                const icons = { 'dance-wiggle': 'dance-wiggle-icon', 'dance-spin': 'dance-spin-icon', 'dance-bounce': 'dance-bounce-icon', 'dance-victory': 'dance-victory-icon' };
+                DANCE_MOVES.forEach(dance => {
+                    const owned = ownedDances.includes(dance.id);
+                    grid.appendChild(createShopCard({ ...dance, svgId: icons[dance.id], owned, equipped: equippedDance === dance.id }, card => {
+                        if (!owned && score < dance.price) { showShopPriceHint(card, dance.price); return; }
+                        if (!owned && !purchaseDance(dance.id)) return;
+                        equippedDance = dance.id;
+                        saveEquippedDance();
+                        document.getElementById('shopCoinCount').textContent = score;
+                        renderShopGrid();
+                        previewShopDance(dance);
+                        playSound(owned ? 'tap' : 'purchase');
+                        if (!owned) { haptic('success'); triggerCelebrationDance('achievement'); }
+                    }));
+                });
+                return;
+            }
+            if (currentCostumeTab === 'pets') {
+                PETS.forEach(pet => {
+                    const owned = ownedPets.includes(pet.id);
+                    grid.appendChild(createShopCard({ ...pet, owned, equipped: equippedPet === pet.id }, card => {
+                        if (!owned && score < pet.price) { showShopPriceHint(card, pet.price); return; }
+                        if (!owned && !purchasePet(pet.id)) return;
+                        equippedPet = pet.id;
+                        saveEquippedPet();
+                        updatePetDisplay();
+                        triggerPetReaction('correct');
+                        document.getElementById('shopCoinCount').textContent = score;
+                        renderShopGrid();
+                        playSound(owned ? 'tap' : 'purchase');
+                        if (!owned) haptic('success');
+                    }));
+                });
+                return;
+            }
+            if (currentCostumeTab === 'trails') {
+                TRAILS.forEach(trail => {
+                    const owned = ownedTrails.includes(trail.id);
+                    const iconHTML = `<svg aria-hidden="true" style="color:${trail.color || '#c4cadf'}"><use href="#${trail.symbol || 'icon-none'}"/></svg>`;
+                    grid.appendChild(createShopCard({ ...trail, iconHTML, owned, equipped: equippedTrail === trail.id }, card => {
+                        if (!owned && score < trail.price) { showShopPriceHint(card, trail.price); return; }
+                        if (!owned && !purchaseTrail(trail.id)) return;
+                        equippedTrail = trail.id;
+                        saveEquippedTrail();
+                        document.getElementById('shopCoinCount').textContent = score;
+                        renderShopGrid();
+                        spawnAnswerTrail();
+                        playSound(owned ? 'tap' : 'purchase');
+                        if (!owned) haptic('success');
+                    }));
+                });
+                return;
+            }
+            const equippedKey = currentCostumeTab === 'hats' ? 'hat' : currentCostumeTab === 'outfits' ? 'outfit' : 'accessory';
+            (COSTUMES[currentCostumeTab] || []).forEach(item => {
+                const owned = isCostumeUnlocked(item);
+                grid.appendChild(createShopCard({ ...item, rarity: null, owned, equipped: equippedCostumes[equippedKey] === item.id }, card => {
+                    if (owned) equipCostume(equippedKey, item.id);
+                    else if (score >= item.price) buyCostume(item.id, item.price);
+                    else showShopPriceHint(card, item.price);
+                }));
             });
         }
 
@@ -8655,6 +9645,11 @@
 
         function updateCostumePreview() {
             const preview = document.getElementById('costumePreview');
+            preview.classList.toggle('sticker-summary', currentCostumeTab === 'stickers');
+            if (currentCostumeTab === 'stickers') {
+                preview.innerHTML = `<strong>${getStickerCount()} / ${STICKERS.length} collected</strong><p>New stickers arrive in mystery boxes.</p>`;
+                return;
+            }
             const avatar = AVATARS[selectedAvatar] || AVATARS.mango;
             const hat = COSTUMES.hats.find(h => h.id === equippedCostumes.hat);
             const outfit = COSTUMES.outfits.find(o => o.id === equippedCostumes.outfit);
@@ -8692,8 +9687,11 @@
             }
 
             preview.innerHTML = `
-                <svg style="width:56px;height:56px;"><use href="#${avatar.svgId}"/></svg>
-                ${overlayHTML}
+                <div class="shop-character" id="shopCharacter" aria-hidden="true"><div class="shop-character-art">
+                    <svg style="width:56px;height:56px;"><use href="#${avatar.svgId}"/></svg>
+                    ${overlayHTML}
+                </div></div>
+                <p class="shop-preview-name">${avatar.name}</p>
             `;
         }
 
@@ -8770,10 +9768,613 @@
         const $bossAnswer = document.getElementById('bossAnswer');
         const $comboDisplay = document.getElementById('comboDisplay');
 
-        loadTheme();
+        let welcomePausedAt = 0;
+        function showWelcomeScreen(firstVisit = false) {
+            if (!firstVisit && (bossActive || showingStrategy || practiceAnswerLocked || document.querySelector('.modal.show'))) return;
+            closeSettingsPanel();
+            welcomePausedAt = Date.now();
+            gameActive = false;
+            document.body.classList.add('welcome-open');
+            document.getElementById('welcomeScreen').hidden = false;
+            document.querySelector('.game-container').inert = true;
+            document.querySelector('.game-brand').inert = true;
+            document.getElementById('welcomePlay').textContent = firstVisit ? 'Play' : 'Keep playing';
+            window.dispatchEvent(new Event('welcomechange'));
+            document.getElementById('welcomePlay').focus({ preventScroll: true });
+        }
+
+        function startFromWelcome() {
+            if (document.getElementById('welcomeScreen').hidden) return;
+            store('welcome_seen', true);
+            document.body.classList.remove('welcome-open');
+            document.getElementById('welcomeScreen').hidden = true;
+            document.querySelector('.game-container').inert = false;
+            document.querySelector('.game-brand').inert = false;
+            gameActive = true;
+            if (currentFact) {
+                struggleState.problemStartTime += Date.now() - welcomePausedAt;
+            } else {
+                generateProblem();
+            }
+            welcomePausedAt = 0;
+            window.dispatchEvent(new Event('welcomechange'));
+            document.getElementById('problem').focus({ preventScroll: true });
+        }
+
+        /* transfer-sheet:begin */
+        // "Move to a New Device" sheet, opened from the welcome screen. The file
+        // logic lives in SaveTransfer at the top of this script.
+        //
+        // Real <button> and <label> elements matter here: iPadOS only lets a real
+        // tap (a click) open the Share sheet or the Files picker.
+        const TRANSFER_GUARD_MS = 300;
+        const transferState = { open: false, busy: false, guardUntil: 0, pasteTimer: null, view: 0, catalog: null };
+
+        function transferCatalog() {
+            return {
+                levelFromXP,
+                avatarName: id => (AVATARS[id] || AVATARS.mango).name,
+                achievementIds: ACHIEVEMENTS.map(a => a.id),
+                stickerTotal: STICKERS.length,
+                factIds: new Set(mathFacts.map(f => f.id)),
+            };
+        }
+
+        // Writes out the saves that wait a few seconds, so the sheet and the file
+        // see exactly what the child has done.
+        function flushPendingSaves() {
+            _flushFactState();
+            _flushCumulativeStats();
+            saveStickers();
+        }
+
+        // Clicks in the first moment after opening, or after any view change, are
+        // ignored, so a double tap can never land on a button that just appeared
+        // under the finger (for example "Put it back" after "Undo the last import").
+        // The tap that changes the view is not affected: this check runs first.
+        document.getElementById('transferModal').addEventListener('click', e => {
+            if (performance.now() < transferState.guardUntil) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
+        // Another open copy of the game (say a second Safari tab) still holds the
+        // old progress in memory and would save it over a move or an Undo made
+        // elsewhere. Both write the Undo copy, so on that signal this copy stops
+        // saving and restarts. The short wait lets the other page finish writing.
+        window.addEventListener('storage', e => {
+            if (e.key !== SaveTransfer.TRANSFER_BACKUP_KEY || savesFrozen) return;
+            savesFrozen = true;
+            setTimeout(() => window.location.reload(), 500);
+        });
+
+        // Small element builder. All text goes in through textContent, never markup.
+        function transferEl(tag, className, text) {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined && text !== null) node.textContent = text;
+            return node;
+        }
+
+        function transferButton(label, kind, sub) {
+            const b = transferEl('button', `transfer-btn transfer-${kind}`);
+            b.type = 'button';
+            b.appendChild(transferEl('span', null, label));
+            if (sub) b.appendChild(transferEl('span', 'transfer-sub', sub));
+            return b;
+        }
+
+        function transferIsStandalone() {
+            // The old Home Screen icon shows the game inside a frame (legacy-site).
+            try {
+                if (window.self !== window.top) return true;
+            } catch (e) {
+                return true;
+            }
+            try {
+                if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+            } catch (e) { /* older engines */ }
+            return window.navigator.standalone === true;
+        }
+
+        function transferFormatDate(ms) {
+            if (!Number.isFinite(ms)) return null;
+            try {
+                return new Date(ms).toLocaleString(undefined, {
+                    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+                });
+            } catch (e) {
+                return new Date(ms).toISOString().slice(0, 16).replace('T', ' ');
+            }
+        }
+
+        function transferSummaryCard(title, summary, extraLine) {
+            const card = transferEl('div', 'transfer-card');
+            card.appendChild(transferEl('p', 'transfer-card-title', title));
+            if (extraLine) card.appendChild(transferEl('p', 'transfer-fine', extraLine));
+            if (summary.isEmpty) {
+                card.appendChild(transferEl('p', 'transfer-p', 'No progress yet'));
+                return card;
+            }
+            const rows = [
+                ['Character', summary.character],
+                ['Level', String(summary.level)],
+                ['Coins', summary.coins.toLocaleString()],
+                ['Facts practiced', `${summary.factsPracticed.toLocaleString()} of ${summary.factsTotal.toLocaleString()}`],
+                ['Achievements', `${summary.achievements} of ${summary.achievementsTotal}`],
+                ['Stickers', `${summary.stickers} of ${summary.stickersTotal}`],
+            ];
+            for (const [label, value] of rows) {
+                const row = transferEl('div', 'transfer-row');
+                row.appendChild(transferEl('span', null, label));
+                row.appendChild(transferEl('b', null, value));
+                card.appendChild(row);
+            }
+            return card;
+        }
+
+        function transferHereSummary() {
+            return SaveTransfer.describeSave(SaveTransfer.readKeys(localStorage), transferState.catalog);
+        }
+
+        function transferStatusLine() {
+            const node = transferEl('p', 'transfer-status');
+            node.setAttribute('role', 'status');
+            node.setAttribute('aria-live', 'polite');
+            return node;
+        }
+
+        function transferStatus(node, text, tone) {
+            node.textContent = text || '';
+            node.classList.toggle('bad', tone === 'bad');
+            node.classList.toggle('good', tone === 'good');
+        }
+
+        function setTransferBusy(on) {
+            transferState.busy = on;
+            for (const node of document.getElementById('transferModal').querySelectorAll('button, textarea, input')) node.disabled = on;
+        }
+
+        // Shrink the sheet to the part of the screen the on-screen keyboard leaves.
+        function fitTransferViewport() {
+            const vv = window.visualViewport;
+            if (!vv || !transferState.open) return;
+            const modal = document.getElementById('transferModal');
+            modal.style.height = `${vv.height}px`;
+            modal.style.top = `${vv.offsetTop}px`;
+        }
+
+        function openTransferSheet() {
+            if (transferState.open || document.querySelector('.modal.show')) return;
+            transferState.open = true;
+            transferState.busy = false;
+            transferState.catalog = transferCatalog();
+            flushPendingSaves();
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', fitTransferViewport);
+                window.visualViewport.addEventListener('scroll', fitTransferViewport);
+            }
+            showModal('transferModal');
+            fitTransferViewport();
+            showTransferView(transferHomeView);
+        }
+
+        function closeTransferSheet() {
+            if (!transferState.open || transferState.busy) return;
+            transferState.open = false;
+            transferState.view++;
+            clearTimeout(transferState.pasteTimer);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', fitTransferViewport);
+                window.visualViewport.removeEventListener('scroll', fitTransferViewport);
+            }
+            const modal = document.getElementById('transferModal');
+            modal.style.removeProperty('height');
+            modal.style.removeProperty('top');
+            hideModal('transferModal');
+            // Closing a dialog wakes the game underneath, but the welcome screen is
+            // still up, so put it back to sleep.
+            if (!document.getElementById('welcomeScreen').hidden) document.querySelector('.game-container').inert = true;
+            window.scrollTo(0, 0);
+            setTimeout(() => { if (!transferState.open) document.getElementById('transferBody').textContent = ''; }, 200);
+        }
+
+        function showTransferView(build) {
+            transferState.guardUntil = performance.now() + TRANSFER_GUARD_MS;
+            transferState.view++;
+            clearTimeout(transferState.pasteTimer);
+            const body = document.getElementById('transferBody');
+            body.textContent = '';
+            const heading = build(body);
+            body.scrollTop = 0;
+            // After showModal's own focus step, which runs on the next frame.
+            requestAnimationFrame(() => {
+                if (transferState.open && heading && heading.isConnected) heading.focus({ preventScroll: true });
+            });
+        }
+
+        function transferHeading(body, text) {
+            const h = transferEl('h3', 'transfer-h', text);
+            h.tabIndex = -1;
+            body.appendChild(h);
+            return h;
+        }
+
+        function transferBackButton(label = 'Back', onClick = () => showTransferView(transferHomeView)) {
+            const b = transferButton(label, 'quiet');
+            b.addEventListener('click', onClick);
+            return b;
+        }
+
+        // Runs a storage change, then restarts the game so everything loads from
+        // the new values. Saving is frozen first, so nothing from this page can
+        // land on top of the moved progress before or during the restart.
+        function commitTransfer(line, action) {
+            setTransferBusy(true);
+            transferStatus(line, 'Moving progress. Mokulua Math will restart.', 'good');
+            try {
+                if (navigator.storage && typeof navigator.storage.persist === 'function') {
+                    navigator.storage.persist().catch(() => {});
+                }
+            } catch (e) { /* optional */ }
+            setTimeout(() => {
+                // The Undo copy should hold this device's very latest progress.
+                flushPendingSaves();
+                savesFrozen = true;
+                let result;
+                try {
+                    result = action();
+                } catch (e) {
+                    result = { ok: false, message: SaveTransfer.MESSAGES.storageFailed };
+                }
+                if (result.ok) {
+                    window.location.reload();
+                    // Saving stays frozen: this page still holds the old progress.
+                    setTimeout(() => transferStatus(line, 'The progress is moved. Close Mokulua Math completely, then open it again.', 'good'), 4000);
+                    return;
+                }
+                savesFrozen = false;
+                setTransferBusy(false);
+                // Disabling the focused button dropped focus; bring it back.
+                const modal = document.getElementById('transferModal');
+                if (!modal.contains(document.activeElement)) modal.focus({ preventScroll: true });
+                transferStatus(line, result.message, 'bad');
+            }, 50);
+        }
+
+        // ----- Home -----
+        function transferHomeView(body) {
+            const h = transferHeading(body, 'Two steps, once for each device');
+            body.appendChild(transferEl('p', 'transfer-p', 'Bring your child\'s level, coins, costumes, and facts to a new device.'));
+            body.appendChild(transferEl('p', 'transfer-fine',
+                'The Home Screen icon and Safari keep separate progress. On both devices, open the game the same way your child plays it.'));
+            body.appendChild(transferEl('p', 'transfer-fine',
+                `Right now you are in: ${transferIsStandalone() ? 'the Home Screen app' : 'a browser tab'}.`));
+
+            const send = transferButton('Send this device\'s progress', 'primary', 'On the old device');
+            send.addEventListener('click', () => showTransferView(transferSendView));
+            const receive = transferButton('Receive progress', 'primary', 'On the new device');
+            receive.addEventListener('click', () => showTransferView(transferReceiveView));
+            body.append(send, receive);
+
+            const backup = SaveTransfer.readBackup(localStorage);
+            if (backup) {
+                const when = transferFormatDate(backup.savedAt);
+                const undo = transferButton(transferUndoLabel(backup), 'quiet', when ? `From ${when}` : null);
+                undo.addEventListener('click', () => showTransferView(transferUndoView));
+                body.appendChild(undo);
+            }
+            return h;
+        }
+
+        // ----- Send -----
+        function transferSendView(body) {
+            const h = transferHeading(body, 'Send this device\'s progress');
+            let transfer;
+            try {
+                transfer = SaveTransfer.buildTransferCode(localStorage, { now: Date.now(), catalog: transferState.catalog });
+            } catch (e) {
+                body.appendChild(transferEl('p', 'transfer-p', 'This device\'s progress could not be read.'));
+                body.appendChild(transferBackButton());
+                return h;
+            }
+            body.appendChild(transferSummaryCard('On this device', transfer.summary));
+
+            if (transfer.summary.isEmpty) {
+                body.appendChild(transferEl('p', 'transfer-warn',
+                    transferIsStandalone()
+                        ? 'There is no progress here to send. If your child plays in Safari, close this and open the game in Safari.'
+                        : 'There is no progress here to send. If your child plays from a Home Screen icon, close this and open the game from that icon.'));
+                body.appendChild(transferBackButton());
+                return h;
+            }
+
+            const file = makeTransferFile(transfer);
+            const canShareFile = !!(file && navigator.share && navigator.canShare && safeCanShareFile(file));
+            const line = transferStatusLine();
+            const box = transferEl('textarea', 'transfer-text');
+            box.readOnly = true;
+            box.value = transfer.text;
+            box.setAttribute('aria-label', 'Save code');
+            box.hidden = true;
+
+            const copy = transferButton(canShareFile ? 'Copy as text instead' : 'Copy the save code', canShareFile ? 'quiet' : 'primary');
+            copy.addEventListener('click', () => copyTransferCode(box, line, transfer.text));
+
+            if (canShareFile) {
+                const share = transferButton('Share the save file', 'primary');
+                share.addEventListener('click', () => shareTransferFile(file, box, line));
+                body.appendChild(share);
+                body.appendChild(transferEl('p', 'transfer-fine',
+                    'Pick AirDrop and choose the new device. You can also save it to Files or send it to yourself in Messages. Keep a copy until the move is done.'));
+                body.appendChild(copy);
+            } else {
+                body.appendChild(transferEl('p', 'transfer-fine',
+                    'This device cannot share a file from here. Copy the code, paste it into Messages or Notes, and send it to yourself or to the new device.'));
+                body.appendChild(copy);
+                box.hidden = false;
+            }
+            body.append(line, box);
+            body.appendChild(transferEl('p', 'transfer-fine', 'Nothing on this device changes.'));
+            body.appendChild(transferBackButton());
+            return h;
+        }
+
+        function makeTransferFile(transfer) {
+            try {
+                return new File([transfer.text], transfer.fileName, { type: 'text/plain' });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function safeCanShareFile(file) {
+            try {
+                return navigator.canShare({ files: [file] });
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Called straight from the click, with nothing awaited first, so the
+        // device still counts it as a tap. The screen never waits on the promise.
+        function shareTransferFile(file, box, line) {
+            let request;
+            try {
+                request = navigator.share({ files: [file] });
+            } catch (e) {
+                showTransferCopyFallback(box, line);
+                return;
+            }
+            transferStatus(line, 'Opening the share sheet.');
+            Promise.resolve(request).then(() => {
+                transferStatus(line, 'Done. On the new device, open Mokulua Math and tap Move to a New Device on the welcome screen, then Receive progress.', 'good');
+            }, err => {
+                const name = err && err.name;
+                if (name === 'AbortError') {
+                    transferStatus(line, 'The share sheet closed. If the file did not go through, tap Share the save file again.');
+                } else if (name === 'NotAllowedError') {
+                    transferStatus(line, 'This device did not allow sharing just then. Tap Share the save file again, or use Copy as text instead.', 'bad');
+                } else if (name === 'InvalidStateError') {
+                    transferStatus(line, 'The share sheet is already open.');
+                } else {
+                    showTransferCopyFallback(box, line);
+                }
+            });
+        }
+
+        function showTransferCopyFallback(box, line) {
+            box.hidden = false;
+            transferStatus(line, 'Sharing did not work here. Use Copy as text instead.', 'bad');
+        }
+
+        function selectAllTransferText(box) {
+            box.hidden = false;
+            try {
+                box.focus({ preventScroll: true });
+                box.setSelectionRange(0, box.value.length);
+            } catch (e) { /* selection is a convenience */ }
+        }
+
+        function copyTransferCode(box, line, text) {
+            box.hidden = false;
+            let request = null;
+            try {
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    request = navigator.clipboard.writeText(text);
+                }
+            } catch (e) {
+                request = null;
+            }
+            const manual = () => {
+                selectAllTransferText(box);
+                transferStatus(line, 'Tap and hold the text, then tap Select All and Copy.');
+            };
+            if (!request) {
+                manual();
+                return;
+            }
+            Promise.resolve(request).then(() => {
+                transferStatus(line, 'Copied. Paste it into Messages or Notes and send it to yourself or to the new device.', 'good');
+            }, manual);
+        }
+
+        // ----- Receive -----
+        function transferReceiveView(body) {
+            const h = transferHeading(body, 'Receive progress');
+            const view = transferState.view;
+            body.appendChild(transferEl('p', 'transfer-fine',
+                'Do this the same way your child will open the game: from the Home Screen icon if they use one, or in Safari if not. The icon and Safari keep separate progress.'));
+            if (!transferIsStandalone()) {
+                body.appendChild(transferEl('p', 'transfer-warn',
+                    'You are in a browser tab. If your child plays from a Home Screen icon, add the icon first and do this inside it.'));
+            }
+
+            const line = transferStatusLine();
+
+            // A real label wrapped round a rendered (but invisible) file input: the
+            // tap on the label is a genuine tap, so the Files picker is allowed to
+            // open. A fresh input each time this view opens avoids stuck pickers.
+            const pick = transferEl('label', 'transfer-btn transfer-primary');
+            pick.appendChild(transferEl('span', null, 'Choose the save file'));
+            const input = transferEl('input', 'transfer-file');
+            input.type = 'file';
+            input.accept = '.txt,text/plain';
+            pick.appendChild(input);
+            input.addEventListener('change', () => {
+                const file = input.files && input.files[0];
+                input.value = '';
+                if (file) readTransferFile(file, line, view);
+            });
+            body.appendChild(pick);
+            body.appendChild(transferEl('p', 'transfer-fine', 'The file is usually in Recents or Downloads. If it came in Messages, open it there, tap Share, then Save to Files, and come back here.'));
+
+            body.appendChild(transferEl('hr', 'transfer-rule'));
+            body.appendChild(transferEl('p', 'transfer-fine', 'Or paste the save code:'));
+            const box = transferEl('textarea', 'transfer-text');
+            box.placeholder = 'Tap and hold here, then tap Paste.';
+            box.setAttribute('aria-label', 'Save code');
+            box.setAttribute('autocomplete', 'off');
+            box.setAttribute('autocorrect', 'off');
+            box.setAttribute('autocapitalize', 'off');
+            box.spellcheck = false;
+            box.addEventListener('input', () => {
+                clearTimeout(transferState.pasteTimer);
+                transferState.pasteTimer = setTimeout(() => {
+                    if (!box.value.trim()) {
+                        transferStatus(line, '');
+                        return;
+                    }
+                    handleTransferCode(box.value, line, box, view);
+                }, 150);
+            });
+            body.append(box, line);
+            body.appendChild(transferBackButton());
+            return h;
+        }
+
+        function readTransferFile(file, line, view) {
+            if (file.size > SaveTransfer.MAX_TRANSFER_CHARS) {
+                transferStatus(line, SaveTransfer.MESSAGES.tooBig, 'bad');
+                return;
+            }
+            transferStatus(line, 'Reading the file.');
+            const onText = text => handleTransferCode(text, line, null, view);
+            const onError = () => {
+                if (transferState.open && view === transferState.view) {
+                    transferStatus(line, 'That file could not be opened. Save it to Files first, then choose it again.', 'bad');
+                }
+            };
+            if (typeof file.text === 'function') {
+                file.text().then(onText, onError);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => onText(String(reader.result || ''));
+            reader.onerror = onError;
+            reader.readAsText(file);
+        }
+
+        // File reads finish late, so a result for a sheet that has since closed
+        // or moved to another view is dropped.
+        function handleTransferCode(text, line, box, view) {
+            if (!transferState.open || view !== transferState.view) return;
+            const parsed = SaveTransfer.parseTransferCode(text);
+            if (!parsed.ok) {
+                transferStatus(line, parsed.message, 'bad');
+                return;
+            }
+            const fileSummary = SaveTransfer.describeSave(parsed.keys, transferState.catalog);
+            if (box) {
+                box.blur();
+                window.scrollTo(0, 0);
+            }
+            showTransferView(b => transferCompareView(b, parsed, fileSummary));
+        }
+
+        // ----- Compare -----
+        function transferCompareView(body, parsed, fileSummary) {
+            const h = transferHeading(body, 'Check before replacing');
+            const here = transferHereSummary();
+            const when = transferFormatDate(parsed.exportedAt);
+            const cards = transferEl('div', 'transfer-cards');
+            cards.append(
+                transferSummaryCard('From the file', fileSummary, when ? `Saved: ${when}` : null),
+                transferSummaryCard('On this device now', here),
+            );
+            body.appendChild(cards);
+
+            if (fileSummary.isEmpty) {
+                body.appendChild(transferEl('p', 'transfer-warn',
+                    'This file has no progress in it. On the old device, open the game the way your child plays it, then send it again.'));
+                body.appendChild(transferBackButton('Back', () => showTransferView(transferReceiveView)));
+                return h;
+            }
+            if (SaveTransfer.sameSaves(parsed.keys, localStorage)) {
+                body.appendChild(transferEl('p', 'transfer-warn', 'This device already has exactly this progress. There is nothing to move.'));
+                body.appendChild(transferBackButton('Back', () => showTransferView(transferReceiveView)));
+                return h;
+            }
+
+            if (!here.isEmpty && SaveTransfer.hasMoreProgress(here, fileSummary)) {
+                body.appendChild(transferEl('p', 'transfer-warn',
+                    'This device has more progress than the file. Replacing it will remove that progress.'));
+            }
+            if (!here.isEmpty && here.avatarId && fileSummary.avatarId && here.avatarId !== fileSummary.avatarId) {
+                body.appendChild(transferEl('p', 'transfer-warn',
+                    'The character in the file is not the one on this device. Make sure this is the right child\'s file.'));
+            }
+            body.appendChild(transferEl('p', 'transfer-fine',
+                'This erases the progress on this device and puts the file\'s progress in its place. You can undo this later from this screen.'));
+
+            const line = transferStatusLine();
+            const replace = transferButton('Replace this device\'s progress', 'danger');
+            replace.addEventListener('click', () => commitTransfer(line, () => SaveTransfer.applyTransfer(localStorage, parsed.keys)));
+            const cancel = transferButton('Cancel', 'quiet');
+            cancel.addEventListener('click', () => showTransferView(transferReceiveView));
+            body.append(replace, line, cancel);
+            return h;
+        }
+
+        // ----- Undo -----
+        function transferUndoLabel(backup) {
+            return backup.reason === 'undo' ? 'Bring back the moved progress' : 'Undo the last import';
+        }
+
+        function transferUndoView(body) {
+            const backup = SaveTransfer.readBackup(localStorage);
+            const h = transferHeading(body, backup ? transferUndoLabel(backup) : 'Undo the last import');
+            if (!backup) {
+                body.appendChild(transferEl('p', 'transfer-p', SaveTransfer.MESSAGES.noBackup));
+                body.appendChild(transferBackButton());
+                return h;
+            }
+            const when = transferFormatDate(backup.savedAt);
+            const cards = transferEl('div', 'transfer-cards');
+            cards.append(
+                transferSummaryCard(backup.reason === 'undo' ? 'The moved progress' : 'Before the import',
+                    SaveTransfer.describeSave(backup.keys, transferState.catalog), when ? `Set aside ${when}` : null),
+                transferSummaryCard('On this device now', transferHereSummary()),
+            );
+            body.appendChild(cards);
+            body.appendChild(transferEl('p', 'transfer-fine',
+                'This swaps the two. What is on this device now is kept, so you can switch back from this screen.'));
+            const line = transferStatusLine();
+            const restore = transferButton('Put it back', 'danger');
+            restore.addEventListener('click', () => commitTransfer(line, () => SaveTransfer.undoLastImport(localStorage)));
+            const cancel = transferButton('Cancel', 'quiet');
+            cancel.addEventListener('click', () => showTransferView(transferHomeView));
+            body.append(restore, line, cancel);
+            return h;
+        }
+        /* transfer-sheet:end */
+
+        const firstVisit = !load('welcome_seen', false) && load('version', 0) === 0;
         loadSoundPref();
         loadAchievements();
         loadProgression();
+        loadTheme();
         loadCumulativeStats();
         loadScene();
         loadOpAccuracyWindows();
@@ -8804,8 +10405,12 @@
                 if (b.id === 'mixed') b.classList.toggle('active', isMixed);
             });
         }
-        resetProblemStruggleState(); // Initialize auto-helper state
-        generateProblem();
+        if (firstVisit) {
+            showWelcomeScreen(true);
+        } else {
+            store('welcome_seen', true);
+            generateProblem();
+        }
 
         // Flush debounced saves when tab/app goes hidden (prevents data loss)
         document.addEventListener('visibilitychange', () => {
@@ -8819,13 +10424,17 @@
         // ============================================
         // THREE.JS PIXEL ART LANIKAI BEACH SCENE
         // ============================================
-        try {
-        (function initThreeJS() {
+        let cleanupBeachScene = () => {};
+        function initThreeJS() {
+            cleanupBeachScene();
+            cleanupBeachScene = () => {};
+            try {
             const canvas = document.getElementById('three-canvas');
             if (!canvas) return; // Graceful fallback if canvas missing
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ canvas, antialias: false }); // No AA for pixel look
+            const beachDisposers = [];
 
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(1); // Force low resolution for pixel art
@@ -8854,6 +10463,12 @@
                 cloudShadow: 0xe8e8e8
             };
             const colors = { ...defaultColors, ...(currentSceneVar.colors || {}) };
+            const sceneryInk = hex => {
+                const c = new THREE.Color(hex);
+                return (.2126 * c.r + .7152 * c.g + .0722 * c.b) < .4 ? '#fff5df' : '#193b4a';
+            };
+            document.documentElement.style.setProperty('--beach-ink', sceneryInk(colors.sky));
+            document.documentElement.style.setProperty('--sand-ink', sceneryInk(colors.sand));
 
             // Sky gradient using a large box
             scene.background = new THREE.Color(colors.sky);
@@ -9621,9 +11236,32 @@
                 createAuroraBands();
             }
 
-            // Camera position (beach view looking at ocean)
-            camera.position.set(-5, 3, 25);
-            camera.lookAt(8, 2, -20);
+            // Keep the islands inside the visible scenery above the phone controls.
+            const beachMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+            const cameraHome = new THREE.Vector3();
+            function frameBeach() {
+                const w = window.innerWidth, h = window.innerHeight;
+                const welcoming = document.body.classList.contains('welcome-open');
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                if (w < 700 || welcoming || h <= 500) {
+                    cameraHome.set(-5, 4, 25);
+                    camera.position.copy(cameraHome);
+                    const panelTop = document.querySelector('.game-container').getBoundingClientRect().top;
+                    const targetY = welcoming ? h * .47 : (h <= 500 ? 8 : Math.max(20, panelTop - 74));
+                    const pitch = Math.atan((.5 - targetY / h) * 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+                    camera.lookAt(-11.5, 4 - Math.tan(pitch) * 72, -47);
+                } else {
+                    cameraHome.set(-5, 3, 25);
+                    camera.position.copy(cameraHome);
+                    camera.lookAt(8, 2, -20);
+                }
+                renderer.render(scene, camera);
+            }
+            frameBeach();
+            const onWelcomeChange = () => frameBeach();
+            window.addEventListener('welcomechange', onWelcomeChange);
+            beachDisposers.push(() => window.removeEventListener('welcomechange', onWelcomeChange));
 
             // Animation
             let time = 0;
@@ -9631,6 +11269,11 @@
 
             function animate() {
                 if (document.hidden) { animFrameId = null; return; }
+                if (beachMotion.matches) {
+                    animFrameId = null;
+                    renderer.render(scene, camera);
+                    return;
+                }
                 animFrameId = requestAnimationFrame(animate);
                 time += 0.02;
 
@@ -9686,8 +11329,8 @@
                 });
 
                 // Gentle camera sway
-                camera.position.x = -5 + Math.sin(time * 0.2) * 0.3;
-                camera.position.y = 3 + Math.cos(time * 0.15) * 0.2;
+                camera.position.x = cameraHome.x + Math.sin(time * 0.2) * 0.08;
+                camera.position.y = cameraHome.y + Math.cos(time * 0.15) * 0.05;
 
                 // Sun glow pulse
                 sunGlow.scale.set(
@@ -9796,28 +11439,26 @@
             }
 
             // Resume animation when tab becomes visible again
-            document.addEventListener('visibilitychange', () => {
+            function resumeBeachAnimation() {
                 if (!document.hidden && !animFrameId) animate();
-            });
+            }
+            document.addEventListener('visibilitychange', resumeBeachAnimation);
 
             // Handle resize
             let resizeTimer;
-            window.addEventListener('resize', () => {
+            function resizeBeach() {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(() => {
                     camera.aspect = window.innerWidth / window.innerHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(window.innerWidth, window.innerHeight);
+                    frameBeach();
                 }, 100);
-            });
+            }
+            window.addEventListener('resize', resizeBeach);
 
-            // Listen for scene changes - reload page to apply new scene
-            window.addEventListener('sceneChange', () => {
-                location.reload();
-            });
-
-            // Listen for theme changes - add/remove aurora bands dynamically
-            window.addEventListener('themeChange', (e) => {
+            // Listen for theme changes - add/remove aurora bands dynamically.
+            function updateBeachWeather(e) {
                 // Remove existing aurora bands
                 sceneExtras.auroraBands.forEach(band => {
                     scene.remove(band);
@@ -9830,15 +11471,44 @@
                 if (e.detail === 'aurora') {
                     createAuroraBands();
                 }
-            });
+            }
+            window.addEventListener('themeChange', updateBeachWeather);
 
+            const onBeachMotionChange = () => {
+                if (animFrameId) cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+                frameBeach();
+                animate();
+            };
+            beachMotion.addEventListener('change', onBeachMotionChange);
+            beachDisposers.push(() => beachMotion.removeEventListener('change', onBeachMotionChange));
+            cleanupBeachScene = () => {
+                if (animFrameId !== null) cancelAnimationFrame(animFrameId);
+                clearTimeout(resizeTimer);
+                document.removeEventListener('visibilitychange', resumeBeachAnimation);
+                window.removeEventListener('resize', resizeBeach);
+                window.removeEventListener('themeChange', updateBeachWeather);
+                beachDisposers.forEach(dispose => dispose());
+                const geometries = new Set();
+                const materials = new Set();
+                scene.traverse(object => {
+                    if (object.geometry) geometries.add(object.geometry);
+                    const list = Array.isArray(object.material) ? object.material : [object.material];
+                    list.filter(Boolean).forEach(material => materials.add(material));
+                });
+                geometries.forEach(geometry => geometry.dispose());
+                materials.forEach(material => material.dispose());
+                renderer.dispose();
+            };
             animate();
-        })();
-        } catch (e) {
+            } catch (e) {
             console.error('Three.js initialization failed:', e);
             const canvas = document.getElementById('three-canvas');
             if (canvas) canvas.style.background = 'linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%)';
+            }
         }
+        window.addEventListener('sceneChange', initThreeJS);
+        initThreeJS();
     </script>
 </body>
 </html>

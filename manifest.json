@@ -4,8 +4,8 @@
   "description": "Mokulua Math: a beachside math practice game for kids.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#87ceeb",
+  "theme_color": "#87ceeb",
   "orientation": "any",
   "icons": [
     {
