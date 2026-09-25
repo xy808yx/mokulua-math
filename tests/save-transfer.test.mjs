@@ -692,6 +692,17 @@ test('another open copy of the game stops saving and restarts when a move lands'
   assert.match(sheet, /addEventListener\('storage', e => \{\s*if \(e\.key !== SaveTransfer\.TRANSFER_BACKUP_KEY \|\| savesFrozen\) return;\s*savesFrozen = true;/);
 });
 
+test('the parents menu avoids calls that old iPads (iOS 12) do not have, and its hold works without pointer events', () => {
+  const menu = markedBlock('parents-menu');
+  for (const api of ['replaceChildren', '?.', '??', 'structuredClone', '.at(']) {
+    assert.ok(!menu.includes(api), `parents menu uses ${api}`);
+  }
+  assert.match(menu, /if \(window\.PointerEvent\)/);
+  for (const type of ['touchstart', 'touchend', 'touchcancel', 'mousedown', 'mouseup']) {
+    assert.ok(menu.includes(`'${type}'`), `the hold has no ${type} fallback`);
+  }
+});
+
 test('the sheet avoids calls that old iPads (iOS 12) do not have', () => {
   const sheet = markedBlock('transfer-sheet');
   for (const api of ['replaceChildren', '?.', '??', 'structuredClone', '.at(']) {
